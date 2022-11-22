@@ -31,4 +31,62 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 DISTFILES += \
     res/fragmentshader.frag \
-    res/vertexshader.vert
+    res/vertexshader.vert \
+    res/thewitcher3.yuv
+
+# Copies the given files to the destination directory
+#defineTest(copyToDestdir) {
+#    files = $$1  dir = $$2
+
+#    for(FILE, files) {
+#        DDIR = $$OUT_PWD
+
+#        # Replace slashes in paths with backslashes for Windows
+#        win32:FILE ~= s,/,\\,g
+#        win32:DDIR ~= s,/,\\,g
+
+#        QMAKE_POST_LINK += $$QMAKE_COPY $$quote($$FILE) $$quote($$DDIR)$$escape_expand(\\n\\t)
+#    }
+#    export(QMAKE_POST_LINK)
+#}
+#copyToDestdir($$PWD/res/fragmentshader.frag $$PWD/res/vertexshader.vert $$PWD/res/thewitcher3.yuv)
+
+#bin need to copy
+EXTRA_BINFILES += \
+    $$PWD/res/thewitcher3.yuv
+#        $${THIRDPARTY_PATH}/gstreamer-0.10/linux/plugins/libgstrtp.so \
+#        $${THIRDPARTY_PATH}/gstreamer-0.10/linux/plugins/libgstvideo4linux2.so
+
+#res need to copy
+EXTRA_RESOURCES += \
+    $$PWD/res/vertexshader.vert \
+    $$PWD/res/fragmentshader.frag
+
+linux-g++{
+    for(FILE, EXTRA_BINFILES){
+        QMAKE_POST_LINK += $$quote(cp $$FILE $$OUT_PWD$$escape_expand(\n\t))
+    }
+    QMAKE_POST_LINK += $$quote(cmd /c [ -d $$OUT_PWD/res ] && echo exist || mkdir $$OUT_PWD/res$$escape_expand(\n\t))
+    for(RESOURCE, EXTRA_RESOURCES){
+        QMAKE_POST_LINK += $$quote(cp $$RESOURCE $$OUT_PWD/res$$escape_expand(\n\t))
+    }
+}
+
+win32 {
+    EXTRA_BINFILES_WIN = $$EXTRA_BINFILES
+    EXTRA_BINFILES_WIN ~= s,/,\\,g
+    DESTDIR_WIN = $$OUT_PWD
+    DESTDIR_WIN ~= s,/,\\,g
+    for(FILE, EXTRA_BINFILES_WIN){
+        QMAKE_POST_LINK += $$quote(cmd /c copy /y $$FILE $$DESTDIR_WIN$$escape_expand(\n\t))
+    }
+    EXTRA_RESOURCES_WIN = $$EXTRA_RESOURCES
+    EXTRA_RESOURCES_WIN ~= s,/,\\,g
+    RES_DESTDIR_WIN = $$OUT_PWD/res
+    RES_DESTDIR_WIN ~= s,/,\\,g
+    QMAKE_POST_LINK += $$quote(cmd /c if not exist $$RES_DESTDIR_WIN md $$RES_DESTDIR_WIN$$escape_expand(\n\t))
+    for(RESOURCE, EXTRA_RESOURCES_WIN){
+        QMAKE_POST_LINK += $$quote(cmd /c copy /y $$RESOURCE $$RES_DESTDIR_WIN$$escape_expand(\n\t))
+    }
+}
+

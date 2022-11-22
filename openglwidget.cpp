@@ -139,8 +139,7 @@ void OpenGLWidget::initializeGL()
     if (!m_initialized)
     {
         initializeOpenGLFunctions();
-        // TODO(hcb): 将Shader代码文件整合到/res路径下
-        if (!createShaders("vertexshader.vert", "fragmentshader.frag"))
+        if (!createShaders("res/vertexshader.vert", "res/fragmentshader.frag"))
             return;
 
         glGenVertexArrays(1, &m_vao);
