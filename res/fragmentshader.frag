@@ -8,13 +8,13 @@ uniform sampler2D vTexture;
 
 void main()
 {
-    float y = texture(yTexture, texCoord).r;
+    float y = texture(yTexture, texCoord).r - 0.063;
     float u = texture(uTexture, texCoord).r - 0.5;
     float v = texture(vTexture, texCoord).r - 0.5;
 
-    float r = y + 1.403 * v;
-    float g = y - 0.343 * u - 0.714 * v;
-    float b = y + 1.770 * u;
+    float r = 1.164 * y + 1.596 * v;
+    float g = 1.164 * y - 0.392 * u - 0.813 * v;
+    float b = 1.164 * y + 2.017 * u;
 
     FragColor = vec4(r, g, b, 1.0);
 }
