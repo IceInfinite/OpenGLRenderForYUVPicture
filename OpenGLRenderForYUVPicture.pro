@@ -31,8 +31,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 DISTFILES += \
     res/fragmentshader.frag \
-    res/vertexshader.vert \
-    res/thewitcher3.yuv
+    res/vertexshader.vert
 
 # Copies the given files to the destination directory
 #defineTest(copyToDestdir) {
@@ -53,7 +52,9 @@ DISTFILES += \
 
 #bin need to copy
 EXTRA_BINFILES += \
-    $$PWD/res/thewitcher3.yuv
+    $$PWD/res/thewitcher3_1920x1080.yuv \
+    $$PWD/res/thewitcher3_1907x1080.yuv \
+    $$PWD/res/thewitcher3_1889x1073.yuv
 #        $${THIRDPARTY_PATH}/gstreamer-0.10/linux/plugins/libgstrtp.so \
 #        $${THIRDPARTY_PATH}/gstreamer-0.10/linux/plugins/libgstvideo4linux2.so
 

@@ -1,5 +1,5 @@
 #version 330 core
-out vec4 FragColor;
+out vec4 fragColor;
 in vec2 texCoord;
 
 uniform sampler2D yTexture;
@@ -16,5 +16,5 @@ void main()
     float g = 1.164 * y - 0.392 * u - 0.813 * v;
     float b = 1.164 * y + 2.017 * u;
 
-    FragColor = vec4(r, g, b, 1.0);
+    fragColor = vec4(r, g, b, 1.0);
 }

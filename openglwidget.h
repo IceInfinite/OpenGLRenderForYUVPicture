@@ -30,6 +30,9 @@ private:
     int m_height;
     int m_videoWidth;
     int m_videoHeight;
+    int m_strideY;
+    int m_strideU;
+    int m_strideV;
     unsigned char *m_pData[3];
 
     // Vertex Array Object

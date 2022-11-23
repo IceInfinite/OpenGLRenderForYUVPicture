@@ -7,17 +7,25 @@
 #include <QFile>
 #include <QTextStream>
 
+namespace
+{
+    int i420DataSize(int height, int strideY, int strideU, int strideV)
+    {
+        return strideY * height + (strideU + strideV) * ((height + 1) / 2);
+    }
+} // namespace
+
 static const GLfloat kVertices[] = {
     // pos              // texture coords
     -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, // bottom left
-     1.0f, -1.0f, 0.0f, 1.0f, 1.0f, // bottom right
-     1.0f,  1.0f, 0.0f, 1.0f, 0.0f, // top right
-    -1.0f,  1.0f, 0.0f, 0.0f, 0.0f  // top left
+    1.0f,  -1.0f, 0.0f, 1.0f, 1.0f, // bottom right
+    1.0f,  1.0f,  0.0f, 1.0f, 0.0f, // top right
+    -1.0f, 1.0f,  0.0f, 0.0f, 0.0f  // top left
 };
 
 static const GLuint kIndices[] = {
-    0, 1, 2, // 第一个三角形
-    0, 2, 3  // 第二个三角形
+    0, 1, 2, // first triangle
+    0, 2, 3  // second triangle
 };
 
 void splitYuv420p(const char *inputPath, int width, int height)
@@ -33,11 +41,10 @@ void splitYuv420p(const char *inputPath, int width, int height)
     std::ofstream picUfile("the_witcher3_960x540.u", std::ios::out | std::ios::binary);
     std::ofstream picVfile("the_witcher3_960x540.v", std::ios::out | std::ios::binary);
 
-
     // 因为一个y(8)+u/4(2) + v/4(2) = 12bit = 1.5个字节
     char *data = new char[width * height * 3 / 2];
 
-    // 整张图片读进来
+    // read all pic data
     picFile.read(data, width * height * 3 / 2);
 
     // Y
@@ -49,7 +56,6 @@ void splitYuv420p(const char *inputPath, int width, int height)
     // V
     picVfile.write(data + width * height * 5 / 4, width * height / 4);
 
-    // 释放资源
     delete[] data;
 
     picFile.close();
@@ -65,6 +71,9 @@ OpenGLWidget::OpenGLWidget(QWidget *parent) :
     m_height(0),
     m_videoWidth(0),
     m_videoHeight(0),
+    m_strideY(0),
+    m_strideU(0),
+    m_strideV(0),
     m_vao(0),
     m_vbo(0),
     m_ebo(0)
@@ -78,7 +87,9 @@ OpenGLWidget::OpenGLWidget(QWidget *parent) :
     {
         m_textures[i] = 0;
     }
-    readYuvPic("thewitcher3.yuv", 1920, 1080);
+    //    readYuvPic("thewitcher3_1907x1080.yuv", 1907, 1080);
+    //    readYuvPic("thewitcher3_1920x1080.yuv", 1920, 1080);
+        readYuvPic("thewitcher3_1889x1073.yuv", 1889, 1073);
 }
 
 OpenGLWidget::~OpenGLWidget()
@@ -102,6 +113,10 @@ void OpenGLWidget::readYuvPic(const char *picPath, int picWidth, int picHeight)
     {
         m_videoWidth = picWidth;
         m_videoHeight = picHeight;
+        m_strideY = m_videoWidth;
+        m_strideU = m_strideV = (m_videoWidth + 1) / 2;
+        qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU << ", width x height: " << m_videoWidth << "x"
+                 << m_videoHeight;
         for (unsigned int i = 0; i < sizeof(m_pData) / sizeof(unsigned char *); ++i)
         {
             if (m_pData[i] != nullptr)
@@ -110,26 +125,28 @@ void OpenGLWidget::readYuvPic(const char *picPath, int picWidth, int picHeight)
                 m_pData[i] = nullptr;
             }
         }
-        m_pData[0] = new unsigned char[m_videoWidth * m_videoHeight];
-        m_pData[1] = new unsigned char[m_videoWidth * m_videoHeight / 4];
-        m_pData[2] = new unsigned char[m_videoWidth * m_videoHeight / 4];
+        m_pData[0] = new unsigned char[m_strideY * m_videoHeight];
+        m_pData[1] = new unsigned char[m_strideU * ((m_videoHeight + 1) / 2)];
+        m_pData[2] = new unsigned char[m_strideV * ((m_videoHeight + 1) / 2)];
     }
-    // y(8bit) + u/4(2bit) + v/4(2bit) = 12 bit = 1.5 Byte
-    char *data = new char[picWidth * picHeight * 3 / 2];
 
-    // 整张图片读进来
-    picFile.read(data, picWidth * picHeight * 3 / 2);
+    int dataSize = i420DataSize(m_videoHeight, m_strideY, m_strideU, m_strideV);
+    char *data = new char[dataSize];
+    qDebug() << "Y size: " << m_strideY * m_videoHeight << ", UV size: " << m_strideU * ((m_videoHeight + 1) / 2)
+             << ", total size: " << dataSize;
+    // read all pic data
+    picFile.read(data, dataSize);
 
     // Y
-    memcpy(m_pData[0], data, picWidth * picHeight);
+    memcpy(m_pData[0], data, m_strideY * m_videoHeight);
 
     // U
-    memcpy(m_pData[1], data + picWidth * picHeight, picWidth * picHeight / 4);
+    memcpy(m_pData[1], data + m_strideY * m_videoHeight, m_strideU * ((m_videoHeight + 1) / 2));
 
     // V
-    memcpy(m_pData[2], data + picWidth * picHeight * 5 / 4, picWidth * picHeight / 4);
+    memcpy(m_pData[2], data + m_strideY * m_videoHeight + m_strideU * ((m_videoHeight + 1) / 2), m_strideV * ((m_videoHeight + 1) / 2));
 
-    // 释放资源
+    // free resource
     delete[] data;
     picFile.close();
 }
@@ -165,6 +182,8 @@ void OpenGLWidget::initializeGL()
         {
             // 将当前上下文纹理对象设置成m_textures[i]
             glBindTexture(GL_TEXTURE_2D, m_textures[i]);
+            // 由于OpenGL内部是4字节对齐的, 为避免像素值不符合要求导致的错误, 设定不足字节对齐的位数按照1字节取出
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
             // 设置纹理采样时超出与缩小图像时的采样方式
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -192,19 +211,19 @@ void OpenGLWidget::paintGL()
     // Y
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_textures[0]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_videoWidth, m_videoHeight, 0, GL_RED, GL_UNSIGNED_BYTE, m_pData[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_strideY, m_videoHeight, 0, GL_RED, GL_UNSIGNED_BYTE, m_pData[0]);
     glUniform1i(glGetUniformLocation(m_program, "yTexture"), 0);
 
     // U
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, m_textures[1]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_videoWidth / 2 , m_videoHeight / 2, 0, GL_RED, GL_UNSIGNED_BYTE, m_pData[1]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_strideU, (m_videoHeight + 1) / 2, 0, GL_RED, GL_UNSIGNED_BYTE, m_pData[1]);
     glUniform1i(glGetUniformLocation(m_program, "uTexture"), 1);
 
     // V
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, m_textures[2]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_videoWidth / 2, m_videoHeight / 2, 0, GL_RED, GL_UNSIGNED_BYTE, m_pData[2]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, m_strideV, (m_videoHeight + 1) / 2, 0, GL_RED, GL_UNSIGNED_BYTE, m_pData[2]);
     glUniform1i(glGetUniformLocation(m_program, "vTexture"), 2);
 
     glBindVertexArray(m_vao);
