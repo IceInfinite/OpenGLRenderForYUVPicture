@@ -25,7 +25,8 @@ protected:
 
 private:
     bool createShaders(const QString &vertexSourcePath, const QString &fragmentSourcePath);
-
+    bool createShaders(const char *vertexSource, const char *fragmentSource);
+    void recreateTextures();
     void clearData();
 
 private:

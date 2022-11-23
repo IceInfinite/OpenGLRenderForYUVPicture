@@ -15,6 +15,43 @@ namespace
     }
 } // namespace
 
+static const char kVertexSource[] = {
+    "#version 330 core\n"
+    "layout (location = 0) in vec3 pos;\n"
+    "layout (location = 1) in vec2 textureCoord;\n"
+    "\n"
+    "out vec2 texCoord;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "gl_Position = vec4(pos, 1.0);\n"
+    "texCoord = textureCoord;\n"
+    "}\n\0"
+};
+
+static const char kFragmentSource[] = {
+    "#version 330 core\n"
+    "out vec4 fragColor;\n"
+    "in vec2 texCoord;\n"
+    "\n"
+    "uniform sampler2D yTexture;\n"
+    "uniform sampler2D uTexture;\n"
+    "uniform sampler2D vTexture;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "float y = texture(yTexture, texCoord).r - 0.063;\n"
+    "float u = texture(uTexture, texCoord).r - 0.5;\n"
+    "float v = texture(vTexture, texCoord).r - 0.5;\n"
+    "\n"
+    "float r = 1.164 * y + 1.596 * v;\n"
+    "float g = 1.164 * y - 0.392 * u - 0.813 * v;\n"
+    "float b = 1.164 * y + 2.017 * u;\n"
+    "\n"
+    "fragColor = vec4(r, g, b, 1.0);\n"
+    "}\n\0"
+};
+
 static const GLfloat kVertices[] = {
     // pos              // texture coords
     -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, // bottom left
@@ -51,6 +88,7 @@ OpenGLWidget::OpenGLWidget(QWidget *parent) :
     {
         m_textures[i] = nullptr;
     }
+    // TODO(hcb): put this function after initializeGL
     //    readYuvPic("thewitcher3_1907x1080.yuv", 1907, 1080);
     //    readYuvPic("thewitcher3_1920x1080.yuv", 1920, 1080);
     readYuvPic("thewitcher3_1889x1073.yuv", 1889, 1073);
@@ -98,6 +136,8 @@ void OpenGLWidget::readYuvPic(const char *picPath, int picWidth, int picHeight)
         m_pData[0] = new unsigned char[m_strideY * m_picHeight];
         m_pData[1] = new unsigned char[m_strideU * ((m_picHeight + 1) / 2)];
         m_pData[2] = new unsigned char[m_strideV * ((m_picHeight + 1) / 2)];
+        // Need to recreate textures
+        // recreateTextures();
     }
 
     int dataSize = i420DataSize(m_picHeight, m_strideY, m_strideU, m_strideV);
@@ -126,7 +166,8 @@ void OpenGLWidget::initializeGL()
     if (!m_initialized)
     {
         initializeOpenGLFunctions();
-        if (!createShaders("res/vertexshader.vert", "res/fragmentshader.frag"))
+        //        if (!createShaders(QString("res/vertexshader.vert"), QString("res/fragmentshader.frag")))
+        if (!createShaders(kVertexSource, kFragmentSource))
             return;
         m_vao.create();
         m_vao.bind();
@@ -149,31 +190,9 @@ void OpenGLWidget::initializeGL()
         m_program.enableAttributeArray(1);
 
         // create textures
-        for (unsigned int i = 0; i < 3; ++i)
-        {
-            m_textures[i] = new QOpenGLTexture(QOpenGLTexture::Target2D);
-            // set the texture wrapping parameters
-            m_textures[i]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionS, QOpenGLTexture::WrapMode::Repeat);
-            m_textures[i]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionT, QOpenGLTexture::WrapMode::Repeat);
-            m_textures[i]->setMinMagFilters(QOpenGLTexture::Filter::Linear, QOpenGLTexture::Filter::Linear);
-            m_textures[i]->setFormat(QOpenGLTexture::TextureFormat::R8_UNorm);
-            if (i == 0)
-            {
-                m_textures[i]->setSize(m_strideY, m_picHeight);
-            }
-            else if (i == 1)
-            {
-                m_textures[i]->setSize(m_strideU, (m_picHeight + 1) / 2);
-            }
-            else if (i == 2)
-            {
-                m_textures[i]->setSize(m_strideV, (m_picHeight + 1) / 2);
-            }
-            m_textures[i]->allocateStorage(QOpenGLTexture::PixelFormat::Red, QOpenGLTexture::PixelType::UInt8);
-            m_textures[i]->generateMipMaps();
-            // 由于OpenGL内部是4字节对齐的, 为避免像素值不符合要求导致的错误, 设定不足字节对齐的位数按照1字节取出
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        }
+        recreateTextures();
+        // 由于OpenGL内部是4字节对齐的, 为避免像素值不符合要求导致的错误, 设定不足字节对齐的位数按照1字节取出
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         m_vao.release();
         m_initialized = true;
     }
@@ -235,6 +254,11 @@ bool OpenGLWidget::createShaders(const QString &vertexSourcePath, const QString 
     const char *vertexSource = vertexSourceStdStr.c_str();
     const char *fragmentSource = fragmentSourceStdStr.c_str();
 
+    return createShaders(vertexSource, fragmentSource);
+}
+
+bool OpenGLWidget::createShaders(const char *vertexSource, const char *fragmentSource)
+{
     m_vertexShader = new QOpenGLShader(QOpenGLShader::Vertex);
     m_vertexShader->compileSourceCode(vertexSource);
     if (!m_vertexShader->isCompiled())
@@ -264,6 +288,38 @@ bool OpenGLWidget::createShaders(const QString &vertexSourcePath, const QString 
     m_vertexShader = nullptr;
     m_fragmentShader = nullptr;
     return true;
+}
+
+void OpenGLWidget::recreateTextures()
+{
+    for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
+    {
+        if (m_textures[i])
+        {
+            delete m_textures[i];
+            m_textures[i] = nullptr;
+        }
+        m_textures[i] = new QOpenGLTexture(QOpenGLTexture::Target2D);
+        // set the texture wrapping parameters
+        m_textures[i]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionS, QOpenGLTexture::WrapMode::Repeat);
+        m_textures[i]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionT, QOpenGLTexture::WrapMode::Repeat);
+        m_textures[i]->setMinMagFilters(QOpenGLTexture::Filter::Linear, QOpenGLTexture::Filter::Linear);
+        m_textures[i]->setFormat(QOpenGLTexture::TextureFormat::R8_UNorm);
+        if (i == 0)
+        {
+            m_textures[i]->setSize(m_strideY, m_picHeight);
+        }
+        else if (i == 1)
+        {
+            m_textures[i]->setSize(m_strideU, (m_picHeight + 1) / 2);
+        }
+        else if (i == 2)
+        {
+            m_textures[i]->setSize(m_strideV, (m_picHeight + 1) / 2);
+        }
+        m_textures[i]->allocateStorage(QOpenGLTexture::PixelFormat::Red, QOpenGLTexture::PixelType::UInt8);
+        m_textures[i]->generateMipMaps();
+    }
 }
 
 void OpenGLWidget::clearData()
