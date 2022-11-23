@@ -177,7 +177,7 @@ void OpenGLWidget::initializeGL()
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void *)(3 * sizeof(GLfloat)));
         glEnableVertexAttribArray(1);
         // 创建纹理对象
-        glGenBuffers(3, m_textures);
+        glGenTextures(3, m_textures);
         for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(GLuint); ++i)
         {
             // 将当前上下文纹理对象设置成m_textures[i]
