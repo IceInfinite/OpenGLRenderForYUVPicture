@@ -1,2 +1,2 @@
 # OpenGLRenderForYUVPicture
-Render For YUV Picture
+Render For YUV420 Format Picture
