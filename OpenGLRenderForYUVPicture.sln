@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.32929.386
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenGLRenderForYUVPicture", "OpenGLRenderForYUVPicture.vcxproj", "{D00D1271-A955-3B97-99B2-2059CDA9C192}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D00D1271-A955-3B97-99B2-2059CDA9C192}.Debug|x64.ActiveCfg = Debug|x64
+		{D00D1271-A955-3B97-99B2-2059CDA9C192}.Debug|x64.Build.0 = Debug|x64
+		{D00D1271-A955-3B97-99B2-2059CDA9C192}.Release|x64.ActiveCfg = Release|x64
+		{D00D1271-A955-3B97-99B2-2059CDA9C192}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8B8E5D7F-C3D8-4340-91D2-96B5F7E9B49E}
+	EndGlobalSection
+EndGlobal

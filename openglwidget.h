@@ -1,5 +1,8 @@
-#ifndef OPENGLWIDGET_H
+﻿#ifndef OPENGLWIDGET_H
 #define OPENGLWIDGET_H
+
+#include <mutex>
+#include <stdint.h>
 
 #include <QOpenGLBuffer>
 #include <QOpenGLFunctions>
@@ -7,6 +10,7 @@
 #include <QOpenGLTexture>
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLWidget>
+#include <QPixmap>
 
 class OpenGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
@@ -17,6 +21,22 @@ public:
     ~OpenGLWidget();
 
     void readYuvPic(const char *picPath, int picWidth, int picHeight);
+    void onPicure(const QPixmap &pix);
+
+    enum class FrameFormat
+    {
+        UNKNOWN = 0,
+        YUV420,
+        BGRA,
+        RGBA
+    };
+
+    void setVideoFrameFormat(const FrameFormat &format);
+    OpenGLWidget::FrameFormat videoFrameFormat() const;
+
+public slots:
+    // 传入下一待渲染帧
+    // void onFrame(const vframe_s &frame);
 
 protected:
     virtual void initializeGL() override;
@@ -26,6 +46,7 @@ protected:
 private:
     bool createShaders(const QString &vertexSourcePath, const QString &fragmentSourcePath);
     bool createShaders(const char *vertexSource, const char *fragmentSource);
+    void reinitNecessaryResource();
     void recreateTextures();
     void clearData();
 
@@ -33,12 +54,22 @@ private:
     bool m_initialized;
     int m_width;
     int m_height;
-    int m_picWidth;
-    int m_picHeight;
+    int m_videoWidth;
+    int m_videoHeight;
     int m_strideY;
     int m_strideU;
     int m_strideV;
     unsigned char *m_pData[3];
+
+    // For m_pData and m_needRender
+    std::mutex m_mutex;
+    FrameFormat m_frameFormat;
+    bool m_needRender;
+
+    // Count Render stats
+    int64_t m_frameCount;
+    int64_t m_frameDropped;
+    int64_t m_frameRendered;
 
     // Vertex Array Object
     QOpenGLVertexArrayObject m_vao;

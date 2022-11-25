@@ -67,7 +67,7 @@ BreakInheritanceList: AfterColon
 # PCIS_BinPack     (文件配置项: BinPack    ) 多个初始化器堆积占行。
 # PCIS_CurrentLine (文件配置项: CurrentLine) 如果合适全部放在当前行上，否则每个初始化器都单独一行。
 # PCIS_NextLine    (文件配置项: NextLine   ) 如果不能全部放在构造函数一行上，尝试全部放在下一行，否则每个初始化器都单独一行。
-PackConstructorInitializers: Never
+# PackConstructorInitializers: Never
 # 初始化列表前换行
 BreakConstructorInitializers: AfterColon
 # Java注解后换行

@@ -1,5 +1,12 @@
 #Directories
 .vscode/
+.vs/
+debug/
+release/
+
 
 #Files
 *.user
+*.stash
+*.jpg
+*.yuv
