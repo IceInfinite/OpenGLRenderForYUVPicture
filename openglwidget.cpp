@@ -11,35 +11,36 @@
 
 namespace
 {
-    int i420DataSize(int height, int strideY, int strideU, int strideV)
-    {
-        return strideY * height + (strideU + strideV) * ((height + 1) / 2);
-    }
+int i420DataSize(int height, int strideY, int strideU, int strideV)
+{
+    return strideY * height + (strideU + strideV) * ((height + 1) / 2);
+}
 
-    // OpenGLWidget::FrameFormat convertReadFormat2FrameFormat(const read_format_e &readFormat)
-    //{
-    //    switch (readFormat)
-    //    {
-    //        case read_format_e::RD_FMT_YUV420P:
-    //            return OpenGLWidget::FrameFormat::YUV420;
-    //        case read_format_e::RD_FMT_BGRA:
-    //            return OpenGLWidget::FrameFormat::BGRA;
-    //        case read_format_e::RD_FMT_RGBA:
-    //            return OpenGLWidget::FrameFormat::RGBA;
-    //        case read_format_e::RD_FMT_NV12:
-    //        case read_format_e::RD_FMT_GRAY8:
-    //        case read_format_e::RD_FMT_CODEC_H264:
-    //        case read_format_e::RD_FMT_CODEC_MJPEG:
-    //        case read_format_e::RD_FMT_YUVJ420P:
-    //        case read_format_e::RD_FMT_RGB24:
-    //        case read_format_e::RD_FMT_BGR24:
-    //        case read_format_e::RD_FMT_ARGB:
-    //        case read_format_e::RD_FMT_ABGR:
-    //        case read_format_e::RD_FMT_NOT_SUPPORT:
-    //            return OpenGLWidget::FrameFormat::UNKNOWN;
-    //    };
-    //}
-} // namespace
+// OpenGLWidget::FrameFormat convertReadFormat2FrameFormat(const read_format_e
+// &readFormat)
+//{
+//    switch (readFormat)
+//    {
+//        case read_format_e::RD_FMT_YUV420P:
+//            return OpenGLWidget::FrameFormat::YUV420;
+//        case read_format_e::RD_FMT_BGRA:
+//            return OpenGLWidget::FrameFormat::BGRA;
+//        case read_format_e::RD_FMT_RGBA:
+//            return OpenGLWidget::FrameFormat::RGBA;
+//        case read_format_e::RD_FMT_NV12:
+//        case read_format_e::RD_FMT_GRAY8:
+//        case read_format_e::RD_FMT_CODEC_H264:
+//        case read_format_e::RD_FMT_CODEC_MJPEG:
+//        case read_format_e::RD_FMT_YUVJ420P:
+//        case read_format_e::RD_FMT_RGB24:
+//        case read_format_e::RD_FMT_BGR24:
+//        case read_format_e::RD_FMT_ARGB:
+//        case read_format_e::RD_FMT_ABGR:
+//        case read_format_e::RD_FMT_NOT_SUPPORT:
+//            return OpenGLWidget::FrameFormat::UNKNOWN;
+//    };
+//}
+}  // namespace
 
 // clang-format off
 static const GLfloat kVertices[] = {
@@ -106,31 +107,32 @@ static const char kBGRAFragmentSource[] = {
 };
 // clang-format on
 
-OpenGLWidget::OpenGLWidget(QWidget *parent) :
-    QOpenGLWidget(parent),
-    m_initialized(false),
-    m_width(0),
-    m_height(0),
-    m_videoWidth(0),
-    m_videoHeight(0),
-    m_strideY(0),
-    m_strideU(0),
-    m_strideV(0),
-    m_frameFormat(FrameFormat::YUV420),
-    m_needRender(false),
-    m_frameCount(0),
-    m_frameDropped(0),
-    m_frameRendered(0),
-    m_vbo(QOpenGLBuffer::VertexBuffer),
-    m_ibo(QOpenGLBuffer::IndexBuffer),
-    m_vertexShader(nullptr),
-    m_fragmentShader(nullptr)
+OpenGLWidget::OpenGLWidget(QWidget *parent)
+    : QOpenGLWidget(parent),
+      m_initialized(false),
+      m_width(0),
+      m_height(0),
+      m_videoWidth(0),
+      m_videoHeight(0),
+      m_strideY(0),
+      m_strideU(0),
+      m_strideV(0),
+      m_frameFormat(FrameFormat::YUV420),
+      m_needRender(false),
+      m_frameCount(0),
+      m_frameDropped(0),
+      m_frameRendered(0),
+      m_vbo(QOpenGLBuffer::VertexBuffer),
+      m_ibo(QOpenGLBuffer::IndexBuffer),
+      m_vertexShader(nullptr),
+      m_fragmentShader(nullptr)
 {
     for (unsigned int i = 0; i < sizeof(m_pData) / sizeof(unsigned char *); ++i)
     {
         m_pData[i] = nullptr;
     }
-    for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
+    for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *);
+         ++i)
     {
         m_textures[i] = nullptr;
     }
@@ -141,7 +143,8 @@ OpenGLWidget::~OpenGLWidget()
 {
     makeCurrent();
 
-    for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
+    for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *);
+         ++i)
     {
         if (m_textures[i])
         {
@@ -161,12 +164,9 @@ OpenGLWidget::~OpenGLWidget()
         m_fragmentShader = nullptr;
     }
 
-    if (m_ibo.isCreated())
-        m_ibo.destroy();
-    if (m_vbo.isCreated())
-        m_vbo.destroy();
-    if (m_vao.isCreated())
-        m_vao.destroy();
+    if (m_ibo.isCreated()) m_ibo.destroy();
+    if (m_vbo.isCreated()) m_vbo.destroy();
+    if (m_vao.isCreated()) m_vao.destroy();
 
     clearData();
 
@@ -189,7 +189,8 @@ void OpenGLWidget::readYuvPic(const char *picPath, int picWidth, int picHeight)
         m_videoHeight = picHeight;
         m_strideY = m_videoWidth;
         m_strideU = m_strideV = (m_videoWidth + 1) / 2;
-        qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU << ", width x height: " << m_videoWidth << "x"
+        qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU
+                 << ", width x height: " << m_videoWidth << "x"
                  << m_videoHeight;
         clearData();
         m_pData[0] = new unsigned char[m_strideY * m_videoHeight];
@@ -201,7 +202,8 @@ void OpenGLWidget::readYuvPic(const char *picPath, int picWidth, int picHeight)
 
     int dataSize = i420DataSize(m_videoHeight, m_strideY, m_strideU, m_strideV);
     char *data = new char[dataSize];
-    qDebug() << "Y size: " << m_strideY * m_videoHeight << ", UV size: " << m_strideU * ((m_videoHeight + 1) / 2)
+    qDebug() << "Y size: " << m_strideY * m_videoHeight
+             << ", UV size: " << m_strideU * ((m_videoHeight + 1) / 2)
              << ", total size: " << dataSize;
     // read all pic data
     picFile.read(data, dataSize);
@@ -210,10 +212,16 @@ void OpenGLWidget::readYuvPic(const char *picPath, int picWidth, int picHeight)
     memcpy(m_pData[0], data, m_strideY * m_videoHeight);
 
     // U
-    memcpy(m_pData[1], data + m_strideY * m_videoHeight, m_strideU * ((m_videoHeight + 1) / 2));
+    memcpy(
+        m_pData[1], data + m_strideY * m_videoHeight,
+        m_strideU * ((m_videoHeight + 1) / 2));
 
     // V
-    memcpy(m_pData[2], data + m_strideY * m_videoHeight + m_strideU * ((m_videoHeight + 1) / 2), m_strideV * ((m_videoHeight + 1) / 2));
+    memcpy(
+        m_pData[2],
+        data + m_strideY * m_videoHeight +
+            m_strideU * ((m_videoHeight + 1) / 2),
+        m_strideV * ((m_videoHeight + 1) / 2));
 
     // free resource
     delete[] data;
@@ -233,16 +241,19 @@ void OpenGLWidget::onPicure(const QPixmap &pix)
 
     QImage img = pix.toImage();
     img = img.convertToFormat(QImage::Format::Format_RGBA8888);
-    if (m_videoWidth != img.width() || m_videoHeight != img.height() || m_frameFormat != FrameFormat::RGBA)
+    if (m_videoWidth != img.width() || m_videoHeight != img.height() ||
+        m_frameFormat != FrameFormat::RGBA)
     {
         m_videoWidth = img.width();
         m_videoHeight = img.height();
         m_frameFormat = FrameFormat::RGBA;
         reinitNecessaryResource();
-        qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU << ", width x height: " << m_videoWidth << "x"
-                 << m_videoHeight << "format: " << static_cast<int>(m_frameFormat);
+        qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU
+                 << ", width x height: " << m_videoWidth << "x" << m_videoHeight
+                 << "format: " << static_cast<int>(m_frameFormat);
     }
-    qDebug() << "Img size: " << img.size() << ", img bytesPerLine: " << img.bytesPerLine();
+    qDebug() << "Img size: " << img.size()
+             << ", img bytesPerLine: " << img.bytesPerLine();
     memcpy(m_pData[0], img.bits(), m_videoWidth * m_videoHeight * 4);
     m_needRender = true;
     update();
@@ -258,8 +269,10 @@ void OpenGLWidget::reinitNecessaryResource()
             m_strideY = m_videoWidth;
             m_strideU = m_strideV = (m_videoWidth + 1) / 2;
             m_pData[0] = new unsigned char[m_strideY * m_videoHeight];
-            m_pData[1] = new unsigned char[m_strideU * ((m_videoHeight + 1) / 2)];
-            m_pData[2] = new unsigned char[m_strideV * ((m_videoHeight + 1) / 2)];
+            m_pData[1] =
+                new unsigned char[m_strideU * ((m_videoHeight + 1) / 2)];
+            m_pData[2] =
+                new unsigned char[m_strideV * ((m_videoHeight + 1) / 2)];
             createShaders(kVertexSource, kFragmentSource);
             break;
         case FrameFormat::RGBA:
@@ -281,7 +294,8 @@ void OpenGLWidget::reinitNecessaryResource()
 void OpenGLWidget::recreateTextures()
 {
     qDebug() << "RecreateTextures";
-    for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
+    for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *);
+         ++i)
     {
         if (m_textures[i])
         {
@@ -293,14 +307,22 @@ void OpenGLWidget::recreateTextures()
     switch (m_frameFormat)
     {
         case FrameFormat::YUV420:
-            for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
+            for (unsigned int i = 0;
+                 i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
             {
                 m_textures[i] = new QOpenGLTexture(QOpenGLTexture::Target2D);
                 // set the texture wrapping parameters
-                m_textures[i]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionS, QOpenGLTexture::WrapMode::Repeat);
-                m_textures[i]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionT, QOpenGLTexture::WrapMode::Repeat);
-                m_textures[i]->setMinMagFilters(QOpenGLTexture::Filter::Linear, QOpenGLTexture::Filter::Linear);
-                m_textures[i]->setFormat(QOpenGLTexture::TextureFormat::R8_UNorm);
+                m_textures[i]->setWrapMode(
+                    QOpenGLTexture::CoordinateDirection::DirectionS,
+                    QOpenGLTexture::WrapMode::Repeat);
+                m_textures[i]->setWrapMode(
+                    QOpenGLTexture::CoordinateDirection::DirectionT,
+                    QOpenGLTexture::WrapMode::Repeat);
+                m_textures[i]->setMinMagFilters(
+                    QOpenGLTexture::Filter::Linear,
+                    QOpenGLTexture::Filter::Linear);
+                m_textures[i]->setFormat(
+                    QOpenGLTexture::TextureFormat::R8_UNorm);
                 if (i == 0)
                 {
                     m_textures[i]->setSize(m_strideY, m_videoHeight);
@@ -313,28 +335,41 @@ void OpenGLWidget::recreateTextures()
                 {
                     m_textures[i]->setSize(m_strideV, (m_videoHeight + 1) / 2);
                 }
-                m_textures[i]->allocateStorage(QOpenGLTexture::PixelFormat::Red, QOpenGLTexture::PixelType::UInt8);
+                m_textures[i]->allocateStorage(
+                    QOpenGLTexture::PixelFormat::Red,
+                    QOpenGLTexture::PixelType::UInt8);
                 m_textures[i]->generateMipMaps();
             }
             break;
         case FrameFormat::RGBA:
             // m_textures[0] = new QOpenGLTexture(QOpenGLTexture::Target2D);
-            // m_textures[0]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionS, QOpenGLTexture::WrapMode::Repeat);
-            // m_textures[0]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionT, QOpenGLTexture::WrapMode::Repeat);
-            // m_textures[0]->setMinMagFilters(QOpenGLTexture::Filter::Linear, QOpenGLTexture::Filter::Linear);
+            // m_textures[0]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionS,
+            // QOpenGLTexture::WrapMode::Repeat);
+            // m_textures[0]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionT,
+            // QOpenGLTexture::WrapMode::Repeat);
+            // m_textures[0]->setMinMagFilters(QOpenGLTexture::Filter::Linear,
+            // QOpenGLTexture::Filter::Linear);
             // m_textures[0]->setFormat(QOpenGLTexture::TextureFormat::RGBA8_UNorm);
             // m_textures[0]->setSize(m_videoWidth, m_videoHeight);
-            // m_textures[0]->allocateStorage(QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::UInt8);
+            // m_textures[0]->allocateStorage(QOpenGLTexture::PixelFormat::RGBA,
+            // QOpenGLTexture::PixelType::UInt8);
             // m_textures[0]->generateMipMaps();
             // break;
         case FrameFormat::BGRA:
             m_textures[0] = new QOpenGLTexture(QOpenGLTexture::Target2D);
-            m_textures[0]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionS, QOpenGLTexture::WrapMode::Repeat);
-            m_textures[0]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionT, QOpenGLTexture::WrapMode::Repeat);
-            m_textures[0]->setMinMagFilters(QOpenGLTexture::Filter::Linear, QOpenGLTexture::Filter::Linear);
-            m_textures[0]->setFormat(QOpenGLTexture::TextureFormat::RGBA8_UNorm);
+            m_textures[0]->setWrapMode(
+                QOpenGLTexture::CoordinateDirection::DirectionS,
+                QOpenGLTexture::WrapMode::Repeat);
+            m_textures[0]->setWrapMode(
+                QOpenGLTexture::CoordinateDirection::DirectionT,
+                QOpenGLTexture::WrapMode::Repeat);
+            m_textures[0]->setMinMagFilters(
+                QOpenGLTexture::Filter::Linear, QOpenGLTexture::Filter::Linear);
+            m_textures[0]->setFormat(
+                QOpenGLTexture::TextureFormat::RGBA8_UNorm);
             m_textures[0]->setSize(m_videoWidth, m_videoHeight);
-            // m_textures[0]->allocateStorage(QOpenGLTexture::PixelFormat::BGRA, QOpenGLTexture::PixelType::UInt8);
+            // m_textures[0]->allocateStorage(QOpenGLTexture::PixelFormat::BGRA,
+            // QOpenGLTexture::PixelType::UInt8);
             m_textures[0]->allocateStorage();
             m_textures[0]->generateMipMaps();
             break;
@@ -355,14 +390,17 @@ void OpenGLWidget::recreateTextures()
 //        return;
 //    }
 //
-//    if (m_videoWidth != frame.width || m_videoHeight != frame.height || m_frameFormat != frameFormat)
+//    if (m_videoWidth != frame.width || m_videoHeight != frame.height ||
+//    m_frameFormat != frameFormat)
 //    {
 //        m_videoWidth = frame.width;
 //        m_videoHeight = frame.height;
 //        m_frameFormat = frameFormat;
 //        reinitNecessaryResource();
-//        qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU << ", width x height: " << m_videoWidth << "x"
-//                 << m_videoHeight << "format: " << static_cast<int>(m_frameFormat);
+//        qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU
+//        << ", width x height: " << m_videoWidth << "x"
+//                 << m_videoHeight << "format: " <<
+//                 static_cast<int>(m_frameFormat);
 //    }
 //
 //    switch (m_frameFormat)
@@ -372,14 +410,15 @@ void OpenGLWidget::recreateTextures()
 //            // Y
 //            memcpy(m_pData[0], frame.data[0], m_strideY * m_videoHeight);
 //            // U
-//            memcpy(m_pData[1], frame.data[1], m_strideU * ((m_videoHeight + 1) / 2));
+//            memcpy(m_pData[1], frame.data[1], m_strideU * ((m_videoHeight + 1)
+//            / 2));
 //            // V
-//            memcpy(m_pData[2], frame.data[2], m_strideV * ((m_videoHeight + 1) / 2));
-//            break;
+//            memcpy(m_pData[2], frame.data[2], m_strideV * ((m_videoHeight + 1)
+//            / 2)); break;
 //        case FrameFormat::RGBA:
 //        case FrameFormat::BGRA:
-//            memcpy(m_pData[0], frame.data[0], m_videoWidth * m_videoHeight * 4);
-//            break;
+//            memcpy(m_pData[0], frame.data[0], m_videoWidth * m_videoHeight *
+//            4); break;
 //        case FrameFormat::UNKNOWN:
 //            qDebug() << "Unsupport video format!";
 //            break;
@@ -390,8 +429,7 @@ void OpenGLWidget::recreateTextures()
 
 void OpenGLWidget::setVideoFrameFormat(const FrameFormat &new_format)
 {
-    if (m_frameFormat == new_format)
-        return;
+    if (m_frameFormat == new_format) return;
     m_frameFormat = new_format;
     std::lock_guard<std::mutex> lock(m_mutex);
     reinitNecessaryResource();
@@ -411,8 +449,7 @@ void OpenGLWidget::initializeGL()
     assert(!m_initialized);
 
     initializeOpenGLFunctions();
-    if (!createShaders(kVertexSource, kFragmentSource))
-        return;
+    if (!createShaders(kVertexSource, kFragmentSource)) return;
     m_vao.create();
     m_vao.bind();
 
@@ -430,12 +467,14 @@ void OpenGLWidget::initializeGL()
     m_program.setAttributeBuffer(0, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
     m_program.enableAttributeArray(0);
     // texture coord attribute
-    m_program.setAttributeBuffer(1, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
+    m_program.setAttributeBuffer(
+        1, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
     m_program.enableAttributeArray(1);
 
     // create textures
     recreateTextures();
-    // 由于OpenGL内部是4字节对齐的, 为避免像素值不符合要求导致的错误, 设定不足字节对齐的位数按照1字节取出
+    // 由于OpenGL内部是4字节对齐的, 为避免像素值不符合要求导致的错误,
+    // 设定不足字节对齐的位数按照1字节取出
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     m_vao.release();
 
@@ -445,7 +484,7 @@ void OpenGLWidget::initializeGL()
 void OpenGLWidget::paintGL()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    //if (!m_needRender)
+    // if (!m_needRender)
     //    return;
     if (!m_initialized)
     {
@@ -465,12 +504,15 @@ void OpenGLWidget::paintGL()
             m_program.setUniformValue("yTexture", 0);
             m_program.setUniformValue("uTexture", 1);
             m_program.setUniformValue("vTexture", 2);
-            for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
+            for (unsigned int i = 0;
+                 i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
             {
                 m_textures[i]->bind(i);
                 if (m_pData[i])
                     m_textures[i]->setData(
-                        0, QOpenGLTexture::PixelFormat::Red, QOpenGLTexture::PixelType::UInt8, static_cast<const void *>(m_pData[i]));
+                        0, QOpenGLTexture::PixelFormat::Red,
+                        QOpenGLTexture::PixelType::UInt8,
+                        static_cast<const void *>(m_pData[i]));
             }
             break;
         case FrameFormat::RGBA:
@@ -478,14 +520,18 @@ void OpenGLWidget::paintGL()
             m_textures[0]->bind(0);
             if (m_pData[0])
                 m_textures[0]->setData(
-                    0, QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::UInt8, static_cast<const void *>(m_pData[0]));
+                    0, QOpenGLTexture::PixelFormat::RGBA,
+                    QOpenGLTexture::PixelType::UInt8,
+                    static_cast<const void *>(m_pData[0]));
             break;
         case FrameFormat::BGRA:
             m_program.setUniformValue("myTexture", 0);
             m_textures[0]->bind(0);
             if (m_pData[0])
                 m_textures[0]->setData(
-                    0, QOpenGLTexture::PixelFormat::BGRA, QOpenGLTexture::PixelType::UInt8, static_cast<const void *>(m_pData[0]));
+                    0, QOpenGLTexture::PixelFormat::BGRA,
+                    QOpenGLTexture::PixelType::UInt8,
+                    static_cast<const void *>(m_pData[0]));
             break;
     }
 
@@ -507,7 +553,8 @@ void OpenGLWidget::resizeGL(int w, int h)
     // m_needRender = true;
 }
 
-bool OpenGLWidget::createShaders(const QString &vertexSourcePath, const QString &fragmentSourcePath)
+bool OpenGLWidget::createShaders(
+    const QString &vertexSourcePath, const QString &fragmentSourcePath)
 {
     QFile vertexSourceFile(vertexSourcePath);
     if (!vertexSourceFile.open(QIODevice::ReadOnly | QIODevice::Text))
@@ -535,7 +582,8 @@ bool OpenGLWidget::createShaders(const QString &vertexSourcePath, const QString 
     return createShaders(vertexSource, fragmentSource);
 }
 
-bool OpenGLWidget::createShaders(const char *vertexSource, const char *fragmentSource)
+bool OpenGLWidget::createShaders(
+    const char *vertexSource, const char *fragmentSource)
 {
     m_program.removeAllShaders();
     if (m_vertexShader)

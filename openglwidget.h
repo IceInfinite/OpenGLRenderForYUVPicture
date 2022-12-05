@@ -1,8 +1,9 @@
 ﻿#ifndef OPENGLWIDGET_H
 #define OPENGLWIDGET_H
 
-#include <mutex>
 #include <stdint.h>
+
+#include <mutex>
 
 #include <QOpenGLBuffer>
 #include <QOpenGLFunctions>
@@ -44,7 +45,8 @@ protected:
     virtual void resizeGL(int w, int h) override;
 
 private:
-    bool createShaders(const QString &vertexSourcePath, const QString &fragmentSourcePath);
+    bool createShaders(
+        const QString &vertexSourcePath, const QString &fragmentSourcePath);
     bool createShaders(const char *vertexSource, const char *fragmentSource);
     void reinitNecessaryResource();
     void recreateTextures();
@@ -82,4 +84,5 @@ private:
     QOpenGLShader *m_fragmentShader;
     QOpenGLShaderProgram m_program;
 };
-#endif // OPENGLWIDGET_H
+
+#endif  // OPENGLWIDGET_H

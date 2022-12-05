@@ -1,13 +1,13 @@
-#include "openglwidget.h"
-
 #include <QApplication>
+
+#include "openglwidget.h"
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     OpenGLWidget w;
     w.show();
-    //QPixmap pix("D:/test_video/yuvplay-myyuvrender.png");
-    //w.onPicure(pix);
+    // QPixmap pix("D:/test_video/yuvplay-myyuvrender.png");
+    // w.onPicure(pix);
     return a.exec();
 }
