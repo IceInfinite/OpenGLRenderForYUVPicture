@@ -23,6 +23,19 @@ HEADERS += \
 
 FORMS +=
 
+INCLUDEPATH += $$PWD/third_party/ffmpeg/include
+
+# Now only support x64
+contains(QT_ARCH, i386) {
+    message("32-bit")
+    LIBS += -L$$PWD/third_party/ffmpeg/lib/x86
+} else {
+    message("64-bit")
+    LIBS += -L$$PWD/third_party/ffmpeg/lib/x64
+}
+
+LIBS += -lavcodec -lavdevice -lavfilter -lavformat -lavutil -lpostproc -lswresample -lswscale
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

@@ -445,7 +445,7 @@ void OpenGLWidget::initializeGL()
 void OpenGLWidget::paintGL()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    // if (!m_needRender)
+    //if (!m_needRender)
     //    return;
     if (!m_initialized)
     {
@@ -468,27 +468,30 @@ void OpenGLWidget::paintGL()
             for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
             {
                 m_textures[i]->bind(i);
-                m_textures[i]->setData(
-                    0, QOpenGLTexture::PixelFormat::Red, QOpenGLTexture::PixelType::UInt8, static_cast<const void *>(m_pData[i]));
+                if (m_pData[i])
+                    m_textures[i]->setData(
+                        0, QOpenGLTexture::PixelFormat::Red, QOpenGLTexture::PixelType::UInt8, static_cast<const void *>(m_pData[i]));
             }
             break;
         case FrameFormat::RGBA:
             m_program.setUniformValue("myTexture", 0);
             m_textures[0]->bind(0);
-            m_textures[0]->setData(
-                0, QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::UInt8, static_cast<const void *>(m_pData[0]));
+            if (m_pData[0])
+                m_textures[0]->setData(
+                    0, QOpenGLTexture::PixelFormat::RGBA, QOpenGLTexture::PixelType::UInt8, static_cast<const void *>(m_pData[0]));
             break;
         case FrameFormat::BGRA:
             m_program.setUniformValue("myTexture", 0);
             m_textures[0]->bind(0);
-            m_textures[0]->setData(
-                0, QOpenGLTexture::PixelFormat::BGRA, QOpenGLTexture::PixelType::UInt8, static_cast<const void *>(m_pData[0]));
+            if (m_pData[0])
+                m_textures[0]->setData(
+                    0, QOpenGLTexture::PixelFormat::BGRA, QOpenGLTexture::PixelType::UInt8, static_cast<const void *>(m_pData[0]));
             break;
     }
 
     m_vao.bind();
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
+    clearData();
     qDebug() << "PaintGL";
     m_needRender = false;
     ++m_frameRendered;
