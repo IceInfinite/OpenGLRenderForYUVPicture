@@ -3,8 +3,11 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <mutex>
+#include <queue>
 
+#include <QByteArray>
 #include <QOpenGLBuffer>
 #include <QOpenGLFunctions>
 #include <QOpenGLShaderProgram>
@@ -12,6 +15,8 @@
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLWidget>
 #include <QPixmap>
+
+#include "videoframe.h"
 
 class OpenGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
@@ -21,23 +26,30 @@ public:
     OpenGLWidget(QWidget *parent = nullptr);
     ~OpenGLWidget();
 
-    void readYuvPic(const char *picPath, int picWidth, int picHeight);
-    void onPicure(const QPixmap &pix);
-
     enum class FrameFormat
     {
-        UNKNOWN = 0,
-        YUV420,
+        UNKNOWN = -1,
+        YUV420P,
+        RGBA,
         BGRA,
-        RGBA
+        RGB
     };
 
     void setVideoFrameFormat(const FrameFormat &format);
     OpenGLWidget::FrameFormat videoFrameFormat() const;
 
+    void startPlay();
+    void stopPlay();
+    // TODO(hcb): 图像缩放策略
+    void setScale(int scale);
+
+    bool checkOpenGLVersion(float requireMinVersion);
+
 public slots:
     // 传入下一待渲染帧
-    // void onFrame(const vframe_s &frame);
+    void onFrame(const std::shared_ptr<VideoFrame> &videoFrame);
+    // 输出渲染相关信息
+    void printRenderStats() const;
 
 protected:
     virtual void initializeGL() override;
@@ -47,28 +59,31 @@ protected:
 private:
     bool createShaders(
         const QString &vertexSourcePath, const QString &fragmentSourcePath);
-    bool createShaders(const char *vertexSource, const char *fragmentSource);
-    void reinitNecessaryResource();
+    bool createShaders(QByteArray vertexSource, QByteArray fragmentSource);
     void recreateTextures();
-    void clearData();
+
+    bool init();
+    void clearFrame();
 
 private:
     bool m_initialized;
-    int m_width;
-    int m_height;
+    bool m_starting;
     int m_videoWidth;
     int m_videoHeight;
     int m_strideY;
     int m_strideU;
     int m_strideV;
-    unsigned char *m_pData[3];
+    int m_scale;
+    std::queue<std::shared_ptr<VideoFrame>> m_frameQueue;
 
-    // For m_pData and m_needRender
+    // For frame and m_needRender
     std::mutex m_mutex;
     FrameFormat m_frameFormat;
     bool m_needRender;
+    bool m_recvFirstFrame;
 
     // Count Render stats
+    mutable int64_t m_times = 1;
     int64_t m_frameCount;
     int64_t m_frameDropped;
     int64_t m_frameRendered;
@@ -79,10 +94,11 @@ private:
     QOpenGLBuffer m_vbo;
     // Element Buffer Object or Index Buffer Object
     QOpenGLBuffer m_ibo;
+    const int m_posLocation;
+    const int m_texCoordsLocation;
+    // TODO(hcb):将指针改为Qt智能指针
     QOpenGLTexture *m_textures[3];
-    QOpenGLShader *m_vertexShader;
-    QOpenGLShader *m_fragmentShader;
-    QOpenGLShaderProgram m_program;
+    QOpenGLShaderProgram *m_program;
 };
 
 #endif  // OPENGLWIDGET_H

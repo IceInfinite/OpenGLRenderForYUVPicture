@@ -211,8 +211,13 @@ cmd /c copy /y .\res\thewitcher3_1889x1073.yuv .</Message>
     </QtMoc>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="alignedmalloc.cpp" />
+    <ClCompile Include="i420buffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="openglwidget.cpp" />
+    <ClCompile Include="videodecoder.cpp" />
+    <ClCompile Include="videoframe.cpp" />
+    <ClCompile Include="videoframebuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="openglwidget.h">
@@ -239,6 +244,14 @@ cmd /c copy /y .\res\thewitcher3_1889x1073.yuv .</Message>
   <ItemGroup>
     <None Include="res\fragmentshader.frag" />
     <None Include="res\vertexshader.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="alignedmalloc.h" />
+    <ClInclude Include="i420buffer.h" />
+    <ClInclude Include="mjpegdecoder.h" />
+    <ClInclude Include="videodecoder.h" />
+    <ClInclude Include="videoframe.h" />
+    <ClInclude Include="videoframebuffer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

@@ -1,49 +1,20 @@
-#include "OpenGLWidget.h"
+#include "openglwidget.h"
 
 #include <assert.h>
 
-#include <fstream>
+//#include <fstream>
 #include <string>
 
+#include <QByteArray>
 #include <QDebug>
 #include <QFile>
 #include <QTextStream>
+#include <QTimer>
 
 namespace
 {
-int i420DataSize(int height, int strideY, int strideU, int strideV)
-{
-    return strideY * height + (strideU + strideV) * ((height + 1) / 2);
-}
-
-// OpenGLWidget::FrameFormat convertReadFormat2FrameFormat(const read_format_e
-// &readFormat)
-//{
-//    switch (readFormat)
-//    {
-//        case read_format_e::RD_FMT_YUV420P:
-//            return OpenGLWidget::FrameFormat::YUV420;
-//        case read_format_e::RD_FMT_BGRA:
-//            return OpenGLWidget::FrameFormat::BGRA;
-//        case read_format_e::RD_FMT_RGBA:
-//            return OpenGLWidget::FrameFormat::RGBA;
-//        case read_format_e::RD_FMT_NV12:
-//        case read_format_e::RD_FMT_GRAY8:
-//        case read_format_e::RD_FMT_CODEC_H264:
-//        case read_format_e::RD_FMT_CODEC_MJPEG:
-//        case read_format_e::RD_FMT_YUVJ420P:
-//        case read_format_e::RD_FMT_RGB24:
-//        case read_format_e::RD_FMT_BGR24:
-//        case read_format_e::RD_FMT_ARGB:
-//        case read_format_e::RD_FMT_ABGR:
-//        case read_format_e::RD_FMT_NOT_SUPPORT:
-//            return OpenGLWidget::FrameFormat::UNKNOWN;
-//    };
-//}
-}  // namespace
-
 // clang-format off
-static const GLfloat kVertices[] = {
+const GLfloat kVertices[] = {
     // pos              // texture coords
     -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, // bottom left
      1.0f, -1.0f, 0.0f, 1.0f, 1.0f, // bottom right
@@ -51,97 +22,210 @@ static const GLfloat kVertices[] = {
     -1.0f,  1.0f, 0.0f, 0.0f, 0.0f  // top left
 };
 
-static const GLuint kIndices[] = {
+const GLuint kIndices[] = {
     0, 1, 2, // first triangle
     0, 2, 3  // second triangle
 };
 
-static const char kVertexSource[] = {
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 pos;\n"
-    "layout (location = 1) in vec2 textureCoord;\n"
+const char kVertexSource[] = {
+    "attribute vec3 a_Position;\n"
+    "attribute vec2 a_TexCoords;\n"
     "\n"
-    "out vec2 texCoord;\n"
+    "varying vec2 v_TexCoords;\n"
     "\n"
     "void main()\n"
     "{\n"
-        "gl_Position = vec4(pos, 1.0);\n"
-        "texCoord = textureCoord;\n"
+        "gl_Position = vec4(a_Position, 1.0);\n"
+        "v_TexCoords = a_TexCoords;\n"
     "}\n\0"
 };
 
-static const char kFragmentSource[] = {
-    "#version 330 core\n"
-    "out vec4 fragColor;\n"
-    "in vec2 texCoord;\n"
+// for I420(16-255) convert to rgb
+const char kFragmentSource[] = {
+    "varying vec2 v_TexCoords;\n"
     "\n"
-    "uniform sampler2D yTexture;\n"
-    "uniform sampler2D uTexture;\n"
-    "uniform sampler2D vTexture;\n"
+    "uniform sampler2D u_Texture0;\n"
+    "uniform sampler2D u_Texture1;\n"
+    "uniform sampler2D u_Texture2;\n"
     "\n"
     "void main()\n"
     "{\n"
-        "float y = texture(yTexture, texCoord).r - 0.063;\n"
-        "float u = texture(uTexture, texCoord).r - 0.5;\n"
-        "float v = texture(vTexture, texCoord).r - 0.5;\n"
+        "float y = texture(u_Texture0, v_TexCoords).r - 0.063;\n"
+        "float u = texture(u_Texture1, v_TexCoords).r - 0.5;\n"
+        "float v = texture(u_Texture2, v_TexCoords).r - 0.5;\n"
         "\n"
         "float r = 1.164 * y + 1.596 * v;\n"
         "float g = 1.164 * y - 0.392 * u - 0.813 * v;\n"
         "float b = 1.164 * y + 2.017 * u;\n"
         "\n"
-        "fragColor = vec4(r, g, b, 1.0);\n"
+        "gl_FragColor = vec4(r, g, b, 1.0);\n"
     "}\n\0"
 };
 
-static const char kBGRAFragmentSource[] = {
-    "#version 330 core\n"
-    "out vec4 fragColor;\n"
-    "in vec2 texCoord;\n"
+const char kRGBXFragmentSource[] = {
+    "varying vec2 v_TexCoords;\n"
     "\n"
-    "uniform sampler2D myTexture;\n"
+    "uniform sampler2D u_Texture0;\n"
     "\n"
     "void main()\n"
     "{\n"
-        "fragColor = texture(myTexture, texCoord);\n"
+        "gl_FragColor = texture(u_Texture0, v_TexCoords);\n"
     "}\n\0"
 };
 // clang-format on
 
+OpenGLWidget::FrameFormat convertBufferType2FrameFormat(
+    VideoFrameBuffer::Type type)
+{
+    switch (type)
+    {
+        case VideoFrameBuffer::Type::kI420:
+            return OpenGLWidget::FrameFormat::YUV420P;
+        case VideoFrameBuffer::Type::kNative:
+        case VideoFrameBuffer::Type::kI420A:
+        case VideoFrameBuffer::Type::kI422:
+        case VideoFrameBuffer::Type::kI444:
+        case VideoFrameBuffer::Type::kI010:
+        case VideoFrameBuffer::Type::kI210:
+        case VideoFrameBuffer::Type::kNV12:
+        default:
+            return OpenGLWidget::FrameFormat::UNKNOWN;
+    }
+
+    return OpenGLWidget::FrameFormat::UNKNOWN;
+}
+
+// OpenGLHelper function
+int GLSLVersion()
+{
+    static int v = -1;
+    if (v >= 0)
+        return v;
+    if (!QOpenGLContext::currentContext())
+    {
+        qWarning("%s: current context is null", __FUNCTION__);
+        return 0;
+    }
+    const char *vs =
+        (const char *)(QOpenGLContext::currentContext()
+                           ->functions()
+                           ->glGetString(GL_SHADING_LANGUAGE_VERSION));
+    int major = 0, minor = 0;
+    // es: "OpenGL ES GLSL ES 1.00 (ANGLE 2.1.99...)" can use ""%*[ a-zA-Z]
+    // %d.%d" in sscanf, desktop: "2.1"
+    // QRegExp rx("(\\d+)\\.(\\d+)");
+    if (strncmp(vs, "OpenGL ES GLSL ES ", 18) == 0)
+        vs += 18;
+    if (sscanf(vs, "%d.%d", &major, &minor) == 2)
+    {
+        v = major * 100 + minor;
+    }
+    else
+    {
+        qWarning(
+            "Failed to detect glsl version using GL_SHADING_LANGUAGE_VERSION!");
+        v = 110;
+    }
+    qDebug("GLSL Version: %d", v);
+    return v;
+}
+
+// current shader works fine for gles 2~3 only with commonShaderHeader(). It's
+// mainly for desktop core profile
+QByteArray commonShaderHeader(QOpenGLShader::ShaderType type)
+{
+    QByteArray h;
+    h += "#define highp\n"
+         "#define mediump\n"
+         "#define lowp\n";
+
+    if (type == QOpenGLShader::Fragment)
+    {
+        // >=1.30: texture(sampler2DRect,...). 'texture' is defined in header
+        // we can't check GLSLVersion() here because it the actually version
+        // used can be defined by "#version"
+        h += "#if __VERSION__ < 130\n"
+             "#define texture texture2D\n"
+             "#else\n"
+             "#define texture2D texture\n"
+             "#endif // < 130\n";
+    }
+    return h;
+}
+
+QByteArray compatibleShaderHeader(QOpenGLShader::ShaderType type)
+{
+    QByteArray h;
+    // #version directive must occur in a compilation unit before anything else,
+    // except for comments and white spaces. Default is 100 if not set
+    h.append("#version ").append(QByteArray::number(GLSLVersion()));
+    h += "\n";
+    h += commonShaderHeader(type);
+    if (GLSLVersion() >= 130)
+    {  // gl 3
+        if (type == QOpenGLShader::Vertex)
+        {
+            h += "#define attribute in\n"
+                 "#define varying out\n";
+        }
+        else if (type == QOpenGLShader::Fragment)
+        {
+            h +=
+                "#define varying in\n"
+                "#define gl_FragColor out_color\n"  // can not starts with 'gl_'
+                "out vec4 gl_FragColor;\n";
+        }
+    }
+    return h;
+}
+
+}  // namespace
+
 OpenGLWidget::OpenGLWidget(QWidget *parent)
     : QOpenGLWidget(parent),
       m_initialized(false),
-      m_width(0),
-      m_height(0),
+      m_starting(false),
       m_videoWidth(0),
       m_videoHeight(0),
       m_strideY(0),
       m_strideU(0),
       m_strideV(0),
-      m_frameFormat(FrameFormat::YUV420),
+      m_scale(1),
+      m_frameFormat(FrameFormat::YUV420P),
       m_needRender(false),
+      m_recvFirstFrame(false),
       m_frameCount(0),
       m_frameDropped(0),
       m_frameRendered(0),
       m_vbo(QOpenGLBuffer::VertexBuffer),
       m_ibo(QOpenGLBuffer::IndexBuffer),
-      m_vertexShader(nullptr),
-      m_fragmentShader(nullptr)
+      m_posLocation(0),
+      m_texCoordsLocation(1),
+      m_program(nullptr)
 {
-    for (unsigned int i = 0; i < sizeof(m_pData) / sizeof(unsigned char *); ++i)
-    {
-        m_pData[i] = nullptr;
-    }
     for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *);
          ++i)
     {
         m_textures[i] = nullptr;
     }
-    readYuvPic("thewitcher3_1889x1073.yuv", 1889, 1073);
+    // 输出统计信息
+    QTimer *timer = new QTimer(this);
+    connect(
+        timer, &QTimer::timeout, this,
+        QOverload<>::of(&OpenGLWidget::printRenderStats));
+    timer->start(1000);
 }
 
 OpenGLWidget::~OpenGLWidget()
 {
     makeCurrent();
+
+    if (m_program)
+    {
+        m_program->removeAllShaders();
+        delete m_program;
+        m_program = nullptr;
+    }
 
     for (unsigned int i = 0; i < sizeof(m_textures) / sizeof(QOpenGLTexture *);
          ++i)
@@ -153,142 +237,128 @@ OpenGLWidget::~OpenGLWidget()
         }
     }
 
-    if (m_vertexShader)
-    {
-        delete m_vertexShader;
-        m_vertexShader = nullptr;
-    }
-    if (m_fragmentShader)
-    {
-        delete m_fragmentShader;
-        m_fragmentShader = nullptr;
-    }
+    if (m_ibo.isCreated())
+        m_ibo.destroy();
+    if (m_vbo.isCreated())
+        m_vbo.destroy();
+    if (m_vao.isCreated())
+        m_vao.destroy();
 
-    if (m_ibo.isCreated()) m_ibo.destroy();
-    if (m_vbo.isCreated()) m_vbo.destroy();
-    if (m_vao.isCreated()) m_vao.destroy();
-
-    clearData();
+    clearFrame();
 
     doneCurrent();
 }
 
-void OpenGLWidget::readYuvPic(const char *picPath, int picWidth, int picHeight)
+void OpenGLWidget::onFrame(const std::shared_ptr<VideoFrame> &videoFrame)
 {
-    std::ifstream picFile(picPath, std::ios::in | std::ios::binary);
-    if (!picFile)
-    {
-        qDebug() << "Open yuv pic failed!";
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (!m_initialized || !m_starting)
         return;
-    }
-
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_videoWidth != picWidth || m_videoHeight != picHeight)
-    {
-        m_videoWidth = picWidth;
-        m_videoHeight = picHeight;
-        m_strideY = m_videoWidth;
-        m_strideU = m_strideV = (m_videoWidth + 1) / 2;
-        qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU
-                 << ", width x height: " << m_videoWidth << "x"
-                 << m_videoHeight;
-        clearData();
-        m_pData[0] = new unsigned char[m_strideY * m_videoHeight];
-        m_pData[1] = new unsigned char[m_strideU * ((m_videoHeight + 1) / 2)];
-        m_pData[2] = new unsigned char[m_strideV * ((m_videoHeight + 1) / 2)];
-        // Need to recreate textures
-        // recreateTextures();
-    }
-
-    int dataSize = i420DataSize(m_videoHeight, m_strideY, m_strideU, m_strideV);
-    char *data = new char[dataSize];
-    qDebug() << "Y size: " << m_strideY * m_videoHeight
-             << ", UV size: " << m_strideU * ((m_videoHeight + 1) / 2)
-             << ", total size: " << dataSize;
-    // read all pic data
-    picFile.read(data, dataSize);
-
-    // Y
-    memcpy(m_pData[0], data, m_strideY * m_videoHeight);
-
-    // U
-    memcpy(
-        m_pData[1], data + m_strideY * m_videoHeight,
-        m_strideU * ((m_videoHeight + 1) / 2));
-
-    // V
-    memcpy(
-        m_pData[2],
-        data + m_strideY * m_videoHeight +
-            m_strideU * ((m_videoHeight + 1) / 2),
-        m_strideV * ((m_videoHeight + 1) / 2));
-
-    // free resource
-    delete[] data;
-    picFile.close();
-    m_needRender = true;
-}
-
-void OpenGLWidget::onPicure(const QPixmap &pix)
-{
-    std::lock_guard<std::mutex> lock(m_mutex);
     ++m_frameCount;
-    if (m_needRender)
+    FrameFormat frameFormat = convertBufferType2FrameFormat(videoFrame->type());
+    // 前一帧未渲染完成时，丢弃后来的一帧
+    if (m_needRender ||
+        (videoFrame->width() <= 0 && videoFrame->height() <= 0) ||
+        frameFormat == FrameFormat::UNKNOWN)
     {
         ++m_frameDropped;
         return;
     }
 
-    QImage img = pix.toImage();
-    img = img.convertToFormat(QImage::Format::Format_RGBA8888);
-    if (m_videoWidth != img.width() || m_videoHeight != img.height() ||
-        m_frameFormat != FrameFormat::RGBA)
+    if (m_videoWidth != videoFrame->width() ||
+        m_videoHeight != videoFrame->height() || m_frameFormat != frameFormat)
     {
-        m_videoWidth = img.width();
-        m_videoHeight = img.height();
-        m_frameFormat = FrameFormat::RGBA;
-        reinitNecessaryResource();
+        m_videoWidth = videoFrame->width();
+        m_videoHeight = videoFrame->height();
+        m_frameFormat = frameFormat;
+        if (!init())
+        {
+            qDebug() << "Reinit failed!";
+            return;
+        }
         qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU
                  << ", width x height: " << m_videoWidth << "x" << m_videoHeight
                  << "format: " << static_cast<int>(m_frameFormat);
     }
-    qDebug() << "Img size: " << img.size()
-             << ", img bytesPerLine: " << img.bytesPerLine();
-    memcpy(m_pData[0], img.bits(), m_videoWidth * m_videoHeight * 4);
+
+    m_recvFirstFrame = true;
+    m_frameQueue.emplace(videoFrame);
     m_needRender = true;
     update();
 }
 
-void OpenGLWidget::reinitNecessaryResource()
+void OpenGLWidget::printRenderStats() const
 {
-    qDebug() << "ReinitNecessaryResource";
-    clearData();
-    switch (m_frameFormat)
+    static int64_t lastTimeRenderedFrames = 0;
+    if (!m_starting)
+        return;
+    qDebug() << "Time " << m_times << ", Frame Count: " << m_frameCount
+             << ", Frame Rendered: " << m_frameRendered
+             << ", Frame Dropped: " << m_frameDropped
+             << ", FPS: " << m_frameRendered - lastTimeRenderedFrames;
+    lastTimeRenderedFrames = m_frameRendered;
+    ++m_times;
+}
+
+bool OpenGLWidget::createShaders(
+    const QString &vertexSourcePath, const QString &fragmentSourcePath)
+{
+    QFile vertexSourceFile(vertexSourcePath);
+    if (!vertexSourceFile.open(QIODevice::ReadOnly | QIODevice::Text))
     {
-        case FrameFormat::YUV420:
-            m_strideY = m_videoWidth;
-            m_strideU = m_strideV = (m_videoWidth + 1) / 2;
-            m_pData[0] = new unsigned char[m_strideY * m_videoHeight];
-            m_pData[1] =
-                new unsigned char[m_strideU * ((m_videoHeight + 1) / 2)];
-            m_pData[2] =
-                new unsigned char[m_strideV * ((m_videoHeight + 1) / 2)];
-            createShaders(kVertexSource, kFragmentSource);
-            break;
-        case FrameFormat::RGBA:
-            // createShaders(kVertexSource, kRGBAFragmentSource);
-        case FrameFormat::BGRA:
-            m_strideY = 0;
-            m_strideU = m_strideV = 0;
-            m_pData[0] = new unsigned char[m_videoWidth * m_videoHeight * 4];
-            createShaders(kVertexSource, kBGRAFragmentSource);
-            break;
-        case FrameFormat::UNKNOWN:
-            qDebug() << "Unsupport video format!";
-            break;
+        qDebug() << "Open vertex source file failed";
+        return false;
     }
-    // Recreate the textures
-    recreateTextures();
+    QByteArray vertexSource = vertexSourceFile.readAll();
+    vertexSourceFile.close();
+
+    QFile fragmentSourceFile(fragmentSourcePath);
+    if (!fragmentSourceFile.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qDebug() << "Open fragrament source file failed";
+        return false;
+    }
+    QByteArray fragmentSource = fragmentSourceFile.readAll();
+    fragmentSourceFile.close();
+
+    return createShaders(vertexSource, fragmentSource);
+}
+
+bool OpenGLWidget::createShaders(
+    QByteArray vertexSource, QByteArray fragmentSource)
+{
+    if (!m_program)
+        m_program = new QOpenGLShaderProgram();
+
+    if (m_program->isLinked())
+    {
+        qWarning() << "Shader program is already linked";
+        // TODO(bug):
+        // 部分电脑上存在无法使用原ShaderProgram的问题,必须在此处重新创建,暂时这样规避
+        // 可能是由于创建了多个OpenGLWidget实例导致的？
+        m_program->removeAllShaders();
+        delete m_program;
+        m_program = nullptr;
+        m_program = new QOpenGLShaderProgram();
+    }
+
+    m_program->removeAllShaders();
+    vertexSource.prepend(compatibleShaderHeader(QOpenGLShader::Vertex));
+    fragmentSource.prepend(compatibleShaderHeader(QOpenGLShader::Fragment));
+    m_program->addShaderFromSourceCode(QOpenGLShader::Vertex, vertexSource);
+    m_program->addShaderFromSourceCode(QOpenGLShader::Fragment, fragmentSource);
+
+    m_program->bindAttributeLocation("a_Position", m_posLocation);
+    m_program->bindAttributeLocation("a_texCoords", m_texCoordsLocation);
+    qDebug("Bind attribute: %s => %d", "a_Position", m_posLocation);
+    qDebug("Bind attribute: %s => %d", "a_texCoords", m_texCoordsLocation);
+
+    if (!m_program->link())
+    {
+        qDebug() << "Shader program compile failed";
+        return false;
+    }
+    return true;
 }
 
 void OpenGLWidget::recreateTextures()
@@ -306,7 +376,7 @@ void OpenGLWidget::recreateTextures()
 
     switch (m_frameFormat)
     {
-        case FrameFormat::YUV420:
+        case FrameFormat::YUV420P:
             for (unsigned int i = 0;
                  i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
             {
@@ -342,19 +412,6 @@ void OpenGLWidget::recreateTextures()
             }
             break;
         case FrameFormat::RGBA:
-            // m_textures[0] = new QOpenGLTexture(QOpenGLTexture::Target2D);
-            // m_textures[0]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionS,
-            // QOpenGLTexture::WrapMode::Repeat);
-            // m_textures[0]->setWrapMode(QOpenGLTexture::CoordinateDirection::DirectionT,
-            // QOpenGLTexture::WrapMode::Repeat);
-            // m_textures[0]->setMinMagFilters(QOpenGLTexture::Filter::Linear,
-            // QOpenGLTexture::Filter::Linear);
-            // m_textures[0]->setFormat(QOpenGLTexture::TextureFormat::RGBA8_UNorm);
-            // m_textures[0]->setSize(m_videoWidth, m_videoHeight);
-            // m_textures[0]->allocateStorage(QOpenGLTexture::PixelFormat::RGBA,
-            // QOpenGLTexture::PixelType::UInt8);
-            // m_textures[0]->generateMipMaps();
-            // break;
         case FrameFormat::BGRA:
             m_textures[0] = new QOpenGLTexture(QOpenGLTexture::Target2D);
             m_textures[0]->setWrapMode(
@@ -368,8 +425,21 @@ void OpenGLWidget::recreateTextures()
             m_textures[0]->setFormat(
                 QOpenGLTexture::TextureFormat::RGBA8_UNorm);
             m_textures[0]->setSize(m_videoWidth, m_videoHeight);
-            // m_textures[0]->allocateStorage(QOpenGLTexture::PixelFormat::BGRA,
-            // QOpenGLTexture::PixelType::UInt8);
+            m_textures[0]->allocateStorage();
+            m_textures[0]->generateMipMaps();
+            break;
+        case FrameFormat::RGB:
+            m_textures[0] = new QOpenGLTexture(QOpenGLTexture::Target2D);
+            m_textures[0]->setWrapMode(
+                QOpenGLTexture::CoordinateDirection::DirectionS,
+                QOpenGLTexture::WrapMode::Repeat);
+            m_textures[0]->setWrapMode(
+                QOpenGLTexture::CoordinateDirection::DirectionT,
+                QOpenGLTexture::WrapMode::Repeat);
+            m_textures[0]->setMinMagFilters(
+                QOpenGLTexture::Filter::Linear, QOpenGLTexture::Filter::Linear);
+            m_textures[0]->setFormat(QOpenGLTexture::TextureFormat::RGB8_UNorm);
+            m_textures[0]->setSize(m_videoWidth, m_videoHeight);
             m_textures[0]->allocateStorage();
             m_textures[0]->generateMipMaps();
             break;
@@ -379,60 +449,55 @@ void OpenGLWidget::recreateTextures()
     }
 }
 
-// void OpenGLWidget::onFrame(const vframe_s &frame)
-//{
-//    std::lock_guard<std::mutex> lock(m_mutex);
-//    ++m_frameCount;
-//    FrameFormat frameFormat = convertReadFormat2FrameFormat(frame.fmt);
-//    if (m_needRender || frameFormat == FrameFormat::UNKNOWN)
-//    {
-//        ++m_frameDropped;
-//        return;
-//    }
-//
-//    if (m_videoWidth != frame.width || m_videoHeight != frame.height ||
-//    m_frameFormat != frameFormat)
-//    {
-//        m_videoWidth = frame.width;
-//        m_videoHeight = frame.height;
-//        m_frameFormat = frameFormat;
-//        reinitNecessaryResource();
-//        qDebug() << "Stride Y: " << m_strideY << ", stride uv: " << m_strideU
-//        << ", width x height: " << m_videoWidth << "x"
-//                 << m_videoHeight << "format: " <<
-//                 static_cast<int>(m_frameFormat);
-//    }
-//
-//    switch (m_frameFormat)
-//    {
-//        // TODO(hcb): 确定数据是这样存储的吗？
-//        case FrameFormat::YUV420:
-//            // Y
-//            memcpy(m_pData[0], frame.data[0], m_strideY * m_videoHeight);
-//            // U
-//            memcpy(m_pData[1], frame.data[1], m_strideU * ((m_videoHeight + 1)
-//            / 2));
-//            // V
-//            memcpy(m_pData[2], frame.data[2], m_strideV * ((m_videoHeight + 1)
-//            / 2)); break;
-//        case FrameFormat::RGBA:
-//        case FrameFormat::BGRA:
-//            memcpy(m_pData[0], frame.data[0], m_videoWidth * m_videoHeight *
-//            4); break;
-//        case FrameFormat::UNKNOWN:
-//            qDebug() << "Unsupport video format!";
-//            break;
-//    }
-//    m_needRender = true;
-//    update();
-//}
+void OpenGLWidget::setScale(int scale)
+{
+    m_scale = scale;
+}
+
+bool OpenGLWidget::checkOpenGLVersion(float requireMinVersion)
+{
+    if (!QOpenGLContext::currentContext())
+    {
+        qWarning("%s: current context is null", __FUNCTION__);
+        return false;
+    }
+    const char *vs = reinterpret_cast<const char *>(
+        QOpenGLContext::currentContext()->functions()->glGetString(GL_VERSION));
+    float currentVersion = 0.0f;
+    int major = 0, minor = 0;
+    if (sscanf(vs, "%d.%d", &major, &minor) == 2)
+    {
+        currentVersion = double(major) + (double)(minor / 10.0f);
+    }
+    else
+    {
+        qWarning("Failed to detect opengl version using GL_VERSION!");
+        currentVersion = 1.0;
+    }
+    qDebug("OpenGL Version: %f", currentVersion);
+
+    if (currentVersion < requireMinVersion)
+    {
+        qWarning(
+            "Current OpenGL version %f does not meet the required min version "
+            "%f",
+            currentVersion, requireMinVersion);
+        return false;
+    }
+
+    return true;
+}
 
 void OpenGLWidget::setVideoFrameFormat(const FrameFormat &new_format)
 {
-    if (m_frameFormat == new_format) return;
-    m_frameFormat = new_format;
     std::lock_guard<std::mutex> lock(m_mutex);
-    reinitNecessaryResource();
+    if (m_frameFormat == new_format)
+        return;
+    m_frameFormat = new_format;
+    if (!init())
+    {
+        qDebug() << "Set video frame format failed!";
+    }
     m_needRender = false;
 }
 
@@ -441,42 +506,42 @@ OpenGLWidget::FrameFormat OpenGLWidget::videoFrameFormat() const
     return m_frameFormat;
 }
 
+void OpenGLWidget::startPlay()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_starting = true;
+}
+
+void OpenGLWidget::stopPlay()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_starting = false;
+}
+
 void OpenGLWidget::initializeGL()
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     qDebug() << "InitializeGL";
-    // if (m_initialized)
-    // return;
     assert(!m_initialized);
 
     initializeOpenGLFunctions();
-    if (!createShaders(kVertexSource, kFragmentSource)) return;
-    m_vao.create();
-    m_vao.bind();
+    QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+    const GLubyte *vendorName = f->glGetString(GL_VENDOR);
+    const GLubyte *renderer = f->glGetString(GL_RENDERER);
+    const GLubyte *openGLVersion = f->glGetString(GL_VERSION);
+    qDebug(
+        "Vendor: %s\n Renderer: %s\n OpenGL Version: %s\n", vendorName,
+        renderer, openGLVersion);
 
-    m_vbo.create();
-    m_vbo.bind();
-    m_vbo.setUsagePattern(QOpenGLBuffer::UsagePattern::StaticDraw);
-    m_vbo.allocate(kVertices, sizeof(kVertices));
-
-    m_ibo.create();
-    m_ibo.bind();
-    m_ibo.setUsagePattern(QOpenGLBuffer::UsagePattern::StaticDraw);
-    m_ibo.allocate(kIndices, sizeof(kIndices));
-
-    // position attribute
-    m_program.setAttributeBuffer(0, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
-    m_program.enableAttributeArray(0);
-    // texture coord attribute
-    m_program.setAttributeBuffer(
-        1, GL_FLOAT, 3 * sizeof(GLfloat), 2, 5 * sizeof(GLfloat));
-    m_program.enableAttributeArray(1);
-
-    // create textures
-    recreateTextures();
     // 由于OpenGL内部是4字节对齐的, 为避免像素值不符合要求导致的错误,
     // 设定不足字节对齐的位数按照1字节取出
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    m_vao.release();
+     f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    if (!init())
+    {
+        qDebug() << "OpenGLWidget init failed";
+        return;
+    }
 
     m_initialized = true;
 }
@@ -484,158 +549,170 @@ void OpenGLWidget::initializeGL()
 void OpenGLWidget::paintGL()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    // if (!m_needRender)
-    //    return;
-    if (!m_initialized)
+    // 无需渲染时，直接返回
+    if (!m_needRender)
     {
-        ++m_frameDropped;
         return;
     }
 
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    // 未初始化/未启动/未接收到首帧时，重置m_needRender状态，无需渲染
+    if (!m_initialized || !m_starting || !m_recvFirstFrame)
+    {
+        m_needRender = false;
+        return;
+    }
 
-    m_program.bind();
+    QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+    f->glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    f->glClear(GL_COLOR_BUFFER_BIT);
+
+    std::shared_ptr<I420BufferInterface> frameBuffer;
+    if (m_frameQueue.empty())
+    {
+        frameBuffer = nullptr;
+    }
+    else
+    {
+        frameBuffer = m_frameQueue.front()->videoFrameBuffer()->toI420();
+    }
+
+    m_program->bind();
 
     // bind textures on corresponding texture units
     switch (m_frameFormat)
     {
-        case FrameFormat::YUV420:
-            m_program.setUniformValue("yTexture", 0);
-            m_program.setUniformValue("uTexture", 1);
-            m_program.setUniformValue("vTexture", 2);
-            for (unsigned int i = 0;
-                 i < sizeof(m_textures) / sizeof(QOpenGLTexture *); ++i)
+        case FrameFormat::YUV420P:
+            m_program->setUniformValue("u_Texture0", 0);
+            m_program->setUniformValue("u_Texture1", 1);
+            m_program->setUniformValue("u_Texture2", 2);
+            m_textures[0]->bind(0);
+            m_textures[1]->bind(1);
+            m_textures[2]->bind(2);
+            if (frameBuffer)
             {
-                m_textures[i]->bind(i);
-                if (m_pData[i])
-                    m_textures[i]->setData(
-                        0, QOpenGLTexture::PixelFormat::Red,
-                        QOpenGLTexture::PixelType::UInt8,
-                        static_cast<const void *>(m_pData[i]));
+                m_textures[0]->setData(
+                    0, QOpenGLTexture::PixelFormat::Red,
+                    QOpenGLTexture::PixelType::UInt8, frameBuffer->dataY());
+                m_textures[1]->setData(
+                    0, QOpenGLTexture::PixelFormat::Red,
+                    QOpenGLTexture::PixelType::UInt8, frameBuffer->dataU());
+                m_textures[2]->setData(
+                    0, QOpenGLTexture::PixelFormat::Red,
+                    QOpenGLTexture::PixelType::UInt8, frameBuffer->dataV());
             }
             break;
         case FrameFormat::RGBA:
-            m_program.setUniformValue("myTexture", 0);
-            m_textures[0]->bind(0);
-            if (m_pData[0])
-                m_textures[0]->setData(
-                    0, QOpenGLTexture::PixelFormat::RGBA,
-                    QOpenGLTexture::PixelType::UInt8,
-                    static_cast<const void *>(m_pData[0]));
-            break;
         case FrameFormat::BGRA:
-            m_program.setUniformValue("myTexture", 0);
-            m_textures[0]->bind(0);
-            if (m_pData[0])
-                m_textures[0]->setData(
-                    0, QOpenGLTexture::PixelFormat::BGRA,
-                    QOpenGLTexture::PixelType::UInt8,
-                    static_cast<const void *>(m_pData[0]));
-            break;
+        case FrameFormat::RGB:
+        case FrameFormat::UNKNOWN:
+            return;
     }
 
     m_vao.bind();
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    clearData();
-    qDebug() << "PaintGL";
+    f->glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    m_vao.release();
+    m_program->release();
+
+    if (!m_frameQueue.empty())
+    {
+        m_frameQueue.pop();
+        ++m_frameRendered;
+    }
+
     m_needRender = false;
-    ++m_frameRendered;
 }
 
 void OpenGLWidget::resizeGL(int w, int h)
 {
-    qDebug() << "ResizeGL";
+    std::lock_guard<std::mutex> lock(m_mutex);
+    // qDebug() << "ResizeGL";
     glViewport(0, 0, w, h);
-    m_width = w;
-    m_height = h;
-    // std::lock_guard<std::mutex> lock(m_mutex);
-    // m_needRender = true;
+    m_needRender = true;
 }
 
-bool OpenGLWidget::createShaders(
-    const QString &vertexSourcePath, const QString &fragmentSourcePath)
+bool OpenGLWidget::init()
 {
-    QFile vertexSourceFile(vertexSourcePath);
-    if (!vertexSourceFile.open(QIODevice::ReadOnly | QIODevice::Text))
+    clearFrame();
+    QByteArray vertexSource;
+    QByteArray fragmentSource;
+    switch (m_frameFormat)
     {
-        qDebug() << "Open vertex source file failed";
+        case FrameFormat::YUV420P:
+            m_strideY = m_videoWidth;
+            m_strideU = m_strideV = (m_videoWidth + 1) / 2;
+            vertexSource =
+                QByteArray(kVertexSource, sizeof(kVertexSource) / sizeof(char));
+            fragmentSource = QByteArray(
+                kFragmentSource, sizeof(kFragmentSource) / sizeof(char));
+            break;
+        case FrameFormat::RGBA:
+        case FrameFormat::BGRA:
+            m_strideY = 0;
+            m_strideU = m_strideV = 0;
+            vertexSource =
+                QByteArray(kVertexSource, sizeof(kVertexSource) / sizeof(char));
+            fragmentSource = QByteArray(
+                kRGBXFragmentSource,
+                sizeof(kRGBXFragmentSource) / sizeof(char));
+            break;
+        case FrameFormat::RGB:
+            m_strideY = 0;
+            m_strideU = m_strideV = 0;
+            vertexSource =
+                QByteArray(kVertexSource, sizeof(kVertexSource) / sizeof(char));
+            fragmentSource = QByteArray(
+                kRGBXFragmentSource,
+                sizeof(kRGBXFragmentSource) / sizeof(char));
+            break;
+        case FrameFormat::UNKNOWN:
+            qWarning() << "Unsupport video format!";
+            return false;
+    }
+
+    if (!createShaders(vertexSource, fragmentSource))
         return false;
-    }
-    QTextStream vertexSourceText(&vertexSourceFile);
-    QString vertexSourceStr = vertexSourceText.readAll();
 
-    QFile fragmentSourceFile(fragmentSourcePath);
-    if (!fragmentSourceFile.open(QIODevice::ReadOnly | QIODevice::Text))
+    if (!m_vao.isCreated())
     {
-        qDebug() << "Open fragrament source file failed";
-        return false;
+        m_vao.create();
+        m_vao.bind();
     }
-    QTextStream fragmentSourceText(&fragmentSourceFile);
-    QString fragmentSourceStr = fragmentSourceText.readAll();
 
-    std::string vertexSourceStdStr = vertexSourceStr.toStdString();
-    std::string fragmentSourceStdStr = fragmentSourceStr.toStdString();
-    const char *vertexSource = vertexSourceStdStr.c_str();
-    const char *fragmentSource = fragmentSourceStdStr.c_str();
-
-    return createShaders(vertexSource, fragmentSource);
-}
-
-bool OpenGLWidget::createShaders(
-    const char *vertexSource, const char *fragmentSource)
-{
-    m_program.removeAllShaders();
-    if (m_vertexShader)
+    if (!m_vbo.isCreated())
     {
-        delete m_vertexShader;
-        m_vertexShader = nullptr;
-    }
-    m_vertexShader = new QOpenGLShader(QOpenGLShader::Vertex);
-    m_vertexShader->compileSourceCode(vertexSource);
-    if (!m_vertexShader->isCompiled())
-    {
-        qDebug() << "Vertex shader compile failed";
-        return false;
+        m_vbo.create();
+        m_vbo.bind();
+        m_vbo.setUsagePattern(QOpenGLBuffer::UsagePattern::StaticDraw);
+        m_vbo.allocate(kVertices, sizeof(kVertices));
     }
 
-    if (m_fragmentShader)
+    if (!m_ibo.isCreated())
     {
-        delete m_fragmentShader;
-        m_fragmentShader = nullptr;
-    }
-    m_fragmentShader = new QOpenGLShader(QOpenGLShader::Fragment);
-    m_fragmentShader->compileSourceCode(fragmentSource);
-    if (!m_fragmentShader->isCompiled())
-    {
-        qDebug() << "Fragment shader compile failed";
-        return false;
+        m_ibo.create();
+        m_ibo.bind();
+        m_ibo.setUsagePattern(QOpenGLBuffer::UsagePattern::StaticDraw);
+        m_ibo.allocate(kIndices, sizeof(kIndices));
     }
 
-    m_program.addShader(m_vertexShader);
-    m_program.addShader(m_fragmentShader);
-    m_program.link();
-    if (!m_program.isLinked())
-    {
-        qDebug() << "Shader program compile failed";
-        return false;
-    }
+    // position attribute
+    m_program->setAttributeBuffer(
+        m_posLocation, GL_FLOAT, 0, 3, 5 * sizeof(GLfloat));
+    m_program->enableAttributeArray(m_posLocation);
+    // texture coord attribute
+    m_program->setAttributeBuffer(
+        m_texCoordsLocation, GL_FLOAT, 3 * sizeof(GLfloat), 2,
+        5 * sizeof(GLfloat));
+    m_program->enableAttributeArray(m_texCoordsLocation);
 
-    // delete m_vertexShader;
-    // delete m_fragmentShader;
-    // m_vertexShader = nullptr;
-    // m_fragmentShader = nullptr;
+    // create textures
+    recreateTextures();
+    m_vao.release();
     return true;
 }
 
-void OpenGLWidget::clearData()
+void OpenGLWidget::clearFrame()
 {
-    for (unsigned int i = 0; i < sizeof(m_pData) / sizeof(unsigned char *); ++i)
-    {
-        if (m_pData[i] != nullptr)
-        {
-            delete[] m_pData[i];
-            m_pData[i] = nullptr;
-        }
-    }
+    while (!m_frameQueue.empty())
+        m_frameQueue.pop();
 }
