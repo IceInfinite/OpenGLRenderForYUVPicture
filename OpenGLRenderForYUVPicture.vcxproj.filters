@@ -58,6 +58,15 @@
     <ClCompile Include="alignedmalloc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="videocodec.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="encodedimage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="h264encoder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="openglwidget.h">
@@ -97,6 +106,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="alignedmalloc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="videocodec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="videoencoder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="encodedimage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="h264encoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

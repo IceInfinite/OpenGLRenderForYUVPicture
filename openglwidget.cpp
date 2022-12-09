@@ -74,7 +74,7 @@ const char kRGBXFragmentSource[] = {
 };
 // clang-format on
 
-OpenGLWidget::FrameFormat convertBufferType2FrameFormat(
+OpenGLWidget::FrameFormat convertToFrameFormat(
     VideoFrameBuffer::Type type)
 {
     switch (type)
@@ -249,27 +249,27 @@ OpenGLWidget::~OpenGLWidget()
     doneCurrent();
 }
 
-void OpenGLWidget::onFrame(const std::shared_ptr<VideoFrame> &videoFrame)
+void OpenGLWidget::onFrame(const VideoFrame &videoFrame)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_initialized || !m_starting)
         return;
     ++m_frameCount;
-    FrameFormat frameFormat = convertBufferType2FrameFormat(videoFrame->type());
+    FrameFormat frameFormat = convertToFrameFormat(videoFrame.type());
     // 前一帧未渲染完成时，丢弃后来的一帧
     if (m_needRender ||
-        (videoFrame->width() <= 0 && videoFrame->height() <= 0) ||
+        (videoFrame.width() <= 0 && videoFrame.height() <= 0) ||
         frameFormat == FrameFormat::UNKNOWN)
     {
         ++m_frameDropped;
         return;
     }
 
-    if (m_videoWidth != videoFrame->width() ||
-        m_videoHeight != videoFrame->height() || m_frameFormat != frameFormat)
+    if (m_videoWidth != videoFrame.width() ||
+        m_videoHeight != videoFrame.height() || m_frameFormat != frameFormat)
     {
-        m_videoWidth = videoFrame->width();
-        m_videoHeight = videoFrame->height();
+        m_videoWidth = videoFrame.width();
+        m_videoHeight = videoFrame.height();
         m_frameFormat = frameFormat;
         if (!init())
         {
@@ -573,7 +573,7 @@ void OpenGLWidget::paintGL()
     }
     else
     {
-        frameBuffer = m_frameQueue.front()->videoFrameBuffer()->toI420();
+        frameBuffer = m_frameQueue.front().videoFrameBuffer()->toI420();
     }
 
     m_program->bind();

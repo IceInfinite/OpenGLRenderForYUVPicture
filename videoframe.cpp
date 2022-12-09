@@ -2,6 +2,8 @@
 
 #include <assert.h>
 
+VideoFrame::VideoFrame() : VideoFrame(nullptr, 0) {}
+
 VideoFrame::VideoFrame(
     const std::shared_ptr<VideoFrameBuffer> &buffer, int64_t timestampUs)
     : m_videoFrameBuffer(buffer), m_timestampUs(timestampUs)

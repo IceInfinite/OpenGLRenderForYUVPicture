@@ -47,7 +47,7 @@ public:
 
 public slots:
     // 传入下一待渲染帧
-    void onFrame(const std::shared_ptr<VideoFrame> &videoFrame);
+    void onFrame(const VideoFrame &videoFrame);
     // 输出渲染相关信息
     void printRenderStats() const;
 
@@ -74,7 +74,7 @@ private:
     int m_strideU;
     int m_strideV;
     int m_scale;
-    std::queue<std::shared_ptr<VideoFrame>> m_frameQueue;
+    std::queue<VideoFrame> m_frameQueue;
 
     // For frame and m_needRender
     std::mutex m_mutex;

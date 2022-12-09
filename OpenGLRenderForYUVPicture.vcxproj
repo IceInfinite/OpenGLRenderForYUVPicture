@@ -212,9 +212,12 @@ cmd /c copy /y .\res\thewitcher3_1889x1073.yuv .</Message>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="alignedmalloc.cpp" />
+    <ClCompile Include="encodedimage.cpp" />
+    <ClCompile Include="h264encoder.cpp" />
     <ClCompile Include="i420buffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="openglwidget.cpp" />
+    <ClCompile Include="videocodec.cpp" />
     <ClCompile Include="videodecoder.cpp" />
     <ClCompile Include="videoframe.cpp" />
     <ClCompile Include="videoframebuffer.cpp" />
@@ -247,9 +250,13 @@ cmd /c copy /y .\res\thewitcher3_1889x1073.yuv .</Message>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="alignedmalloc.h" />
+    <ClInclude Include="encodedimage.h" />
+    <ClInclude Include="h264encoder.h" />
     <ClInclude Include="i420buffer.h" />
     <ClInclude Include="mjpegdecoder.h" />
+    <ClInclude Include="videocodec.h" />
     <ClInclude Include="videodecoder.h" />
+    <ClInclude Include="videoencoder.h" />
     <ClInclude Include="videoframe.h" />
     <ClInclude Include="videoframebuffer.h" />
   </ItemGroup>

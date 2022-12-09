@@ -5,7 +5,7 @@
 
 #include <memory>
 
-//#include <QMetaType>
+#include <QMetaType>
 
 #include "i420buffer.h"
 #include "videoframebuffer.h"
@@ -13,6 +13,7 @@
 class VideoFrame
 {
 public:
+    VideoFrame();
     VideoFrame(
         const std::shared_ptr<VideoFrameBuffer> &buffer, int64_t timestampUs = 0);
     ~VideoFrame();
@@ -50,6 +51,6 @@ private:
     // rotation
 };
 
-//Q_DECLARE_METATYPE(std::shared_ptr<VideoFrame>);
+Q_DECLARE_METATYPE(VideoFrame);
 
 #endif  // VIDEOFRAME_H
