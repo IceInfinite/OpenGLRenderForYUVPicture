@@ -3,6 +3,11 @@
 
 #include <memory>
 
+extern "C"
+{
+#include <libavcodec/avcodec.h>
+}
+
 #include "encodedimage.h"
 #include "videocodec.h"
 #include "videoframe.h"
@@ -15,6 +20,7 @@ public:
     virtual bool onEncodedImage(
         const EncodedImage &encodedImage
         /*const CodecSpecificInfo* codec_specific_info*/) = 0;
+    virtual bool onEncodedImage(/* const */ AVPacket *packet) = 0;
 };
 
 class VideoEncoder
@@ -28,6 +34,8 @@ public:
     virtual void start() = 0;
 
     virtual void stop() = 0;
+
+    virtual AVCodecContext *encodeContext() { return nullptr; }
     // Encode an image (as a part of a video stream). The encoded image
     // will be returned to the user through the encode complete callback.
     virtual void encode(const VideoFrame &frame) = 0;

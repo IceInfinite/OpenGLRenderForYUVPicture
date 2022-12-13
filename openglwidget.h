@@ -35,6 +35,7 @@ public:
         RGB
     };
 
+    void setVideoParams(const FrameFormat &format, int width, int height);
     void setVideoFrameFormat(const FrameFormat &format);
     OpenGLWidget::FrameFormat videoFrameFormat() const;
 

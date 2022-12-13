@@ -50,12 +50,6 @@ public:
     EncodedImage &operator=(EncodedImage &&) = default;
     EncodedImage &operator=(const EncodedImage &) = default;
 
-    void setTimestamp(int64_t timestamp);
-    int64_t timestamp() const;
-
-    void setStreamIndex(int index);
-    int streamIndex() const;
-
     void setSize(size_t new_size);
     size_t size() const;
 
@@ -65,11 +59,12 @@ public:
 
     const uint8_t *data() const;
 
-    void setWidth(int width);
-    void setHeight(int height);
+    int m_streamIndex;
+    int m_encodedWidth;
+    int m_encodedHeight;
 
-    int width() const;
-    int height() const;
+    int64_t m_pts;
+    int64_t m_dts;
 
 private:
     size_t capacity();
@@ -77,10 +72,6 @@ private:
     std::shared_ptr<EncodedImageBufferInterface> m_encodedBuffer;
     // buffer size
     size_t m_size;
-    int m_streamIndex;
-    int64_t m_timestampUs;
-    int m_encodedWidth;
-    int m_encodedHeight;
 };
 
 #endif  // ENCODEDIMAGE_H

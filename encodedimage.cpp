@@ -49,26 +49,6 @@ EncodedImageBuffer::~EncodedImageBuffer()
     free(m_buffer);
 }
 
-void EncodedImage::setTimestamp(int64_t timestamp)
-{
-    m_timestampUs = timestamp;
-}
-
-int64_t EncodedImage::timestamp() const
-{
-    return m_timestampUs;
-}
-
-void EncodedImage::setStreamIndex(int index)
-{
-    m_streamIndex = index;
-}
-
-int EncodedImage::streamIndex() const
-{
-    return m_streamIndex;
-}
-
 size_t EncodedImage::size() const
 {
     return m_size;
@@ -95,26 +75,6 @@ void EncodedImage::clearEncodedBuffer()
 const uint8_t *EncodedImage::data() const
 {
     return m_encodedBuffer ? m_encodedBuffer->data() : nullptr;
-}
-
-void EncodedImage::setWidth(int width)
-{
-    m_encodedWidth = width;
-}
-
-void EncodedImage::setHeight(int height)
-{
-    m_encodedHeight = height;
-}
-
-int EncodedImage::width() const
-{
-    return m_encodedWidth;
-}
-
-int EncodedImage::height() const
-{
-    return m_encodedHeight;
 }
 
 void EncodedImage::setSize(size_t newSize)

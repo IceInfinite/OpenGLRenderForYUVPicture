@@ -488,6 +488,23 @@ bool OpenGLWidget::checkOpenGLVersion(float requireMinVersion)
     return true;
 }
 
+void OpenGLWidget::setVideoParams(
+    const FrameFormat &format, int width, int height)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_frameFormat != format || m_videoWidth != width || m_videoHeight != height)
+    {
+        m_frameFormat = format;
+        m_videoWidth = width;
+        m_videoHeight = height;
+        if (!init())
+        {
+            qDebug() << "Set video frame format failed!";
+        }
+        m_needRender = false;
+    }
+}
+
 void OpenGLWidget::setVideoFrameFormat(const FrameFormat &new_format)
 {
     std::lock_guard<std::mutex> lock(m_mutex);

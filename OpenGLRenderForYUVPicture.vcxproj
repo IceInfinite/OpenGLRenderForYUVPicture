@@ -221,6 +221,7 @@ cmd /c copy /y .\res\thewitcher3_1889x1073.yuv .</Message>
     <ClCompile Include="videodecoder.cpp" />
     <ClCompile Include="videoframe.cpp" />
     <ClCompile Include="videoframebuffer.cpp" />
+    <ClCompile Include="videorecorder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="openglwidget.h">
@@ -259,6 +260,7 @@ cmd /c copy /y .\res\thewitcher3_1889x1073.yuv .</Message>
     <ClInclude Include="videoencoder.h" />
     <ClInclude Include="videoframe.h" />
     <ClInclude Include="videoframebuffer.h" />
+    <ClInclude Include="videorecorder.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
