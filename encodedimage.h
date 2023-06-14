@@ -1,4 +1,4 @@
-#ifndef ENCODEDIMAGE_H
+﻿#ifndef ENCODEDIMAGE_H
 #define ENCODEDIMAGE_H
 
 #include <stdint.h>
@@ -41,7 +41,7 @@ public:
 class EncodedImage
 {
 public:
-    EncodedImage() = default;
+    EncodedImage();
     EncodedImage(EncodedImage &&) = default;
     EncodedImage(const EncodedImage &) = default;
 
@@ -62,9 +62,9 @@ public:
     int m_streamIndex;
     int m_encodedWidth;
     int m_encodedHeight;
+    bool m_isKeyFrame;
 
     int64_t m_pts;
-    int64_t m_dts;
 
 private:
     size_t capacity();

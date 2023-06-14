@@ -1,4 +1,4 @@
-#ifndef H264ENCODER_H
+Ôªø#ifndef H264ENCODER_H
 #define H264ENCODER_H
 
 #include <stdint.h>
@@ -15,6 +15,7 @@
 extern "C"
 {
 #include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
 }  // extern "C"
 
 class H264Encoder : public VideoEncoder
@@ -22,7 +23,8 @@ class H264Encoder : public VideoEncoder
 public:
     enum class H264EncoderType
     {
-        kH264NVENC = 0,
+        kUnsupport = -1,
+        kH264NVENC,
         kH264QSV,
         kX264,
     };
@@ -40,16 +42,21 @@ public:
     void start() override;
     void stop() override;
 
+    const AVCodecContext *encodeContext() const override;
+
 private:
     bool isEncoderSupport(const char *encoderName);
-    void encodeInternal(const AVFrame *frame);
+    bool doEncode(const AVFrame *frame);
+    bool encodeInternal(const AVFrame *frame);
     void threadFunc();
+    // Use for h264_qsv encoder
+    bool setHwframeCtx();
 
 private:
     std::condition_variable m_cv;
     std::unique_ptr<std::thread> m_thread;
     std::mutex m_frameMutex;
-    std::queue<VideoFrame> m_inFrames;
+    std::queue<VideoFrame> m_frameQueue;
     std::atomic_bool m_isStarting;
 
     VideoCodec m_codec;
@@ -60,23 +67,19 @@ private:
 
     int64_t m_pts;
 
-    AVCodecContext *m_codecCtx;
-    AVCodec *m_avCodec;
-    AVBufferRef *m_hwDeviceCtx;
-    // »Ì±‡¬Î ± π”√µƒ÷°, Œﬁ¬€ «∑Ò»Ì±‡æ˘–Ë“™ YUV420P
-    AVFrame *m_avFrame;
-    // ”≤±‡¬Î ±–Ë π”√µƒ÷°, ”…m_swFrame◊™ªØ≥… NV12
-    AVFrame *m_hwFrame;
-    AVPacket *m_packet;
-    //    AVOutputFormat *m_oFmt;
-    //    AVFormatContext *m_oFmtCtx;
-    //    AVStream *m_videoStream;
-    //    AVDictionary *m_option;
+    AVPixelFormat m_srcPixFmt;
+    AVPixelFormat m_swsPixFmt;
 
-    //    SwsContext *m_swsCtx;
-    //    uint8_t *m_buf;
-    //    AVPixelFormat m_swsPixFmt;
-    //    AVPixelFormat m_srcPixFmt;
+    // TODO(hcb): ÊîπÈÄ†ÊàêÊô∫ËÉΩÊåáÈíà
+    AVCodecContext *m_encodeCtx;
+    const AVCodec *m_avCodec;
+    AVBufferRef *m_hwDeviceCtx;
+    SwsContext *m_swsCtx;
+    AVFrame *m_avFrame;
+    // Áî®‰∫éÊ†ºÂºèËΩ¨Êç¢ÁöÑÂ∏ß
+    AVFrame *m_swsFrame;
+    uint8_t *m_swsBuffer;
+    AVPacket *m_packet;
 };
 
 #endif  // H264ENCODER_H

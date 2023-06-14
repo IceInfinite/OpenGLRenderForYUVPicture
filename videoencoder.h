@@ -1,4 +1,4 @@
-#ifndef VIDEOENCODER_H
+﻿#ifndef VIDEOENCODER_H
 #define VIDEOENCODER_H
 
 #include <memory>
@@ -20,7 +20,8 @@ public:
     virtual bool onEncodedImage(
         const EncodedImage &encodedImage
         /*const CodecSpecificInfo* codec_specific_info*/) = 0;
-    virtual bool onEncodedImage(/* const */ AVPacket *packet) = 0;
+    virtual bool onEncodedImage(
+        /* const */ AVPacket *packet, int width, int height) = 0;
 };
 
 class VideoEncoder
@@ -35,7 +36,7 @@ public:
 
     virtual void stop() = 0;
 
-    virtual AVCodecContext *encodeContext() { return nullptr; }
+    virtual const AVCodecContext *encodeContext() const { return nullptr; }
     // Encode an image (as a part of a video stream). The encoded image
     // will be returned to the user through the encode complete callback.
     virtual void encode(const VideoFrame &frame) = 0;

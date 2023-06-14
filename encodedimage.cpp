@@ -1,4 +1,4 @@
-#include "encodedimage.h"
+﻿#include "encodedimage.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -47,6 +47,17 @@ EncodedImageBuffer::EncodedImageBuffer(const uint8_t *data, size_t size)
 EncodedImageBuffer::~EncodedImageBuffer()
 {
     free(m_buffer);
+}
+
+EncodedImage::EncodedImage()
+    : m_streamIndex(0),
+      m_encodedWidth(0),
+      m_encodedHeight(0),
+      m_isKeyFrame(false),
+      m_pts(0),
+      m_encodedBuffer(nullptr),
+      m_size(0)
+{
 }
 
 size_t EncodedImage::size() const

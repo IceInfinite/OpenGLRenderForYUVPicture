@@ -1,7 +1,7 @@
-#ifndef VIDEOCODEC_H
+﻿#ifndef VIDEOCODEC_H
 #define VIDEOCODEC_H
 
-#include <stdint.h>
+#include <QString>
 
 enum class VideoCodecType
 {
@@ -36,15 +36,23 @@ public:
     int m_width;
     int m_height;
     VideoCodecType m_codecType;
-    uint32_t m_frameRate;
-    uint32_t m_targetBitrate;
+    int m_frameRate;
+    int m_targetBitrate;
 
-    uint32_t m_qpMax;
+    int m_qpMin;
+    int m_qpMax;
+    int m_qp;
+    float m_crf;
 
     bool m_frameDropEnabled;
 
+    VideoCodecMJPEG *MJPEG();
     const VideoCodecMJPEG &MJPEG() const;
+
+    VideoCodecH264 *H264();
     const VideoCodecH264 &H264() const;
+
+    QString toString();
 
 private:
     VideoCodecUnion m_codecSpecific;
